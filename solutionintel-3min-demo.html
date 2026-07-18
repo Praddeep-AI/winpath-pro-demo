@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>SolutionIntel — 3-Minute Executive Demo</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+
+/*
+ * LAYOUT STRATEGY
+ * ───────────────
+ * The demo is designed at a logical 1920×1080 canvas.
+ * We use a CSS scale() transform anchored top-left so the canvas
+ * always fills the real viewport without scrollbars or clipping,
+ * regardless of actual screen resolution or window size.
+ * JS in <script> recalculates --scale on every resize.
+ */
+:root{
+  --scale:1;
+  --ibm-blue:#0f62fe;
+  --ibm-dark:#0a0a0a;
+  --ibm-surface:#161616;
+  --ibm-card:#262626;
+  --ibm-card2:#393939;
+  --ibm-border:#3d3d3d;
+  --ibm-text:#f4f4f4;
+  --ibm-muted:#8d8d8d;
+  --ibm-green:#198038;
+  --ibm-purple:#6929c4;
+  --ibm-teal:#007d79;
+  --ibm-orange:#d97706;
+  --ibm-red:#c8371a;
+  --ibm-blue2:#4589ff;
+}
+
+html,body{
+  width:100vw;height:100vh;
+  overflow:hidden;
+  background:#000;
+  font-family:'Segoe UI',system-ui,sans-serif;
+}
+
+/* ── SHELL — fixed 1920×1080 canvas, scaled to fit viewport ── */
+#shell{
+  position:absolute;
+  top:0;left:0;
+  width:1920px;height:1080px;
+  transform-origin:top left;
+  transform:scale(var(--scale));
+  overflow:hidden;
+  background:#0a0a0a;
+}
+
+/* ── TOPBAR ─────────────────────────────────────────────── */
+#topbar{
+  position:absolute;top:0;left:0;right:0;z-index:200;
+  height:52px;background:#050505;border-bottom:1px solid var(--ibm-border);
+  display:flex;align-items:center;padding:0 32px;gap:20px
+}
+.ibm-logo-top{font-size:22px;font-weight:800;letter-spacing:.16em;color:var(--ibm-blue);font-style:italic}
+.top-sep{width:1px;height:18px;background:var(--ibm-border)}
+.top-title{font-size:13px;font-weight:600;color:var(--ibm-text)}
+.top-badge{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;background:var(--ibm-blue);color:#fff;padding:3px 10px;border-radius:2px}
+.top-right{margin-left:auto;display:flex;align-items:center;gap:14px}
+#timer-display{font-size:18px;font-weight:700;color:#78a9ff;font-variant-numeric:tabular-nums;min-width:54px;text-align:right}
+#progress-outer{width:320px;height:4px;background:var(--ibm-card2);border-radius:2px;overflow:hidden}
+#progress-inner{height:100%;background:var(--ibm-blue);width:0%;transition:width .5s linear}
+
+/* ── SCENE CONTAINER ────────────────────────────────────── */
+#scenes{
+  position:absolute;
+  top:52px;left:0;right:0;
+  height:calc(1080px - 52px); /* fixed canvas height minus topbar */
+  overflow:hidden;
+}
+.scene{
+  position:absolute;
+  top:0;left:0;right:0;
+  height:100%;           /* fills #scenes exactly */
+  opacity:0;pointer-events:none;
+  transition:opacity .6s ease;
+  display:flex;flex-direction:column;
+  overflow:hidden;       /* prevent any child from blowing out */
+}
+.scene.active{opacity:1;pointer-events:all}
+
+/* ── SCENE CAPTION BAR ──────────────────────────────────── */
+.caption{
+  position:absolute;bottom:0;left:0;right:0;
+  background:rgba(0,0,0,.86);
+  border-top:2px solid var(--ibm-blue);
+  padding:12px 40px;display:flex;align-items:center;gap:24px;z-index:50;
+  flex-shrink:0;
+}
+.cap-scene{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ibm-blue);min-width:80px}
+.cap-text{font-size:16px;color:var(--ibm-text);line-height:1.5;flex:1}
+.cap-time{font-size:11px;color:var(--ibm-muted);min-width:60px;text-align:right}
+
+/* ── SCENE 0: TITLE CARD ─────────────────────────────────── */
+#s0{background:radial-gradient(ellipse 80% 70% at 60% 40%,#0f2354 0%,#04061a 100%)}
+.s0-inner{
+  flex:1;min-height:0;              /* flex child must opt-in to shrink */
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:40px 60px 90px;          /* extra bottom padding clears caption */
+  text-align:center;position:relative;z-index:1
+}
+.s0-eyebrow{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:#78a9ff;margin-bottom:18px}
+.s0-h1{font-size:88px;font-weight:800;letter-spacing:-.04em;color:#fff;line-height:1;margin-bottom:16px}
+.s0-h1 span{color:var(--ibm-blue)}
+.s0-tagline{font-size:26px;color:#c8d9ff;margin-bottom:48px;font-weight:300}
+.s0-metrics{display:flex;gap:60px;margin-top:8px}
+.s0-m{text-align:center}
+.s0-mv{font-size:48px;font-weight:800;color:#fff}
+.s0-ml{font-size:13px;color:#78a9ff;text-transform:uppercase;letter-spacing:.08em;margin-top:4px}
+.s0-m .s0-mv.green{color:#42be65}
+.s0-m .s0-mv.orange{color:#f1c21b}
+.s0-m .s0-mv.purple{color:#a56eff}
+/* grid lines */
+.s0-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(15,98,254,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(15,98,254,.06) 1px,transparent 1px);background-size:80px 80px;pointer-events:none}
+
+/* ── SCENE 1: PLATFORM PORTAL (index.html replica) ──────── */
+#s1{background:#f4f4f4;color:#161616}
+.portal-header{background:#0f62fe;color:#fff;padding:18px 48px;flex-shrink:0}
+.ph-eye{font-size:11px;letter-spacing:.1em;text-transform:uppercase;opacity:.8;margin-bottom:4px}
+.ph-h1{font-size:26px;font-weight:700}
+.ph-sub{font-size:13px;opacity:.85;margin-top:4px;max-width:620px}
+.portal-body{padding:18px 48px 90px;overflow:hidden;flex:1;min-height:0}
+.portal-section-title{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#525252;margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid #e0e0e0}
+.portal-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
+.portal-card{background:#fff;border:1px solid #e0e0e0;border-top:3px solid;padding:16px 18px 20px;cursor:pointer}
+.portal-card h3{font-size:14px;font-weight:700;margin-bottom:4px}
+.portal-card p{font-size:12px;color:#525252;line-height:1.5}
+.portal-card.blue{border-top-color:#0f62fe}
+.portal-card.green{border-top-color:#198038}
+.portal-card.purple{border-top-color:#6929c4}
+.portal-card.teal{border-top-color:#007d79}
+.portal-card.orange{border-top-color:#d97706}
+.card-tag{display:inline-block;font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:2px 8px;border-radius:2px;margin-bottom:8px;color:#fff}
+.tag-blue{background:#0f62fe}
+.tag-green{background:#198038}
+.tag-purple{background:#6929c4}
+.tag-teal{background:#007d79}
+.tag-orange{background:#d97706}
+
+/* ── SCENE 2: WINPATH PRO / RFP TOUR ─────────────────────── */
+#s2{background:#111;color:#f4f4f4;padding-bottom:62px} /* room for caption */
+.wp-header{height:44px;background:#000;border-bottom:1px solid #393939;display:flex;align-items:center;padding:0 20px;gap:14px;flex-shrink:0}
+.wp-ibm{font-size:20px;font-weight:800;letter-spacing:.14em;color:#fff;font-style:italic}
+.wp-sep{width:1px;height:16px;background:#393939}
+.wp-prod{font-size:13px;font-weight:600;color:#f4f4f4}
+.wp-sub{font-size:10px;color:#4589ff;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+.wp-avatar{width:32px;height:32px;border-radius:50%;background:#0f62fe;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-left:auto}
+.wp-body{display:flex;flex:1;min-height:0;overflow:hidden}
+.wp-sidebar{width:190px;background:#262626;border-right:1px solid #393939;display:flex;flex-direction:column}
+.wp-ni{display:flex;align-items:center;gap:8px;padding:10px 14px;font-size:12px;color:#c6c6c6;border-left:3px solid transparent;cursor:pointer}
+.wp-ni.active{background:#393939;color:#f4f4f4;font-weight:600;border-left-color:#0f62fe}
+.wp-main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.wp-page-header{height:44px;background:#262626;border-bottom:1px solid #393939;display:flex;align-items:center;padding:0 20px}
+.wp-page-title{font-size:14px;font-weight:600}
+.wp-page-desc{font-size:11px;color:#a8a8a8;margin-left:10px}
+.wp-content{flex:1;min-height:0;padding:14px 20px;overflow:hidden;display:flex;flex-direction:column;gap:10px}
+.wp-g4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.wp-kpi{background:#262626;border:1px solid #393939;border-radius:3px;padding:14px}
+.wp-kv{font-size:26px;font-weight:700;color:#0f62fe}
+.wp-kl{font-size:10px;color:#8d8d8d;text-transform:uppercase;letter-spacing:.06em;margin-top:3px}
+.wp-kv.green{color:#42be65}
+.wp-kv.orange{color:#f1c21b}
+.wp-kv.purple{color:#a56eff}
+/* comparison bar */
+.comp-bar{background:#262626;border:1px solid #393939;border-radius:3px;padding:16px;display:flex;flex-direction:column;gap:8px}
+.comp-row{display:flex;align-items:center;gap:12px;font-size:12px}
+.comp-label{width:180px;color:#c6c6c6}
+.comp-track{flex:1;height:22px;background:#393939;border-radius:2px;overflow:hidden}
+.comp-fill{height:100%;display:flex;align-items:center;padding-left:8px;font-size:11px;font-weight:700;color:#fff}
+.comp-fill.trad{background:#c8371a;width:100%}
+.comp-fill.ai{background:#0f62fe;width:66%}
+.comp-val{min-width:90px;font-weight:700;text-align:right}
+.saving-pill{background:#042e0b;border:1px solid #198038;border-radius:3px;padding:8px 14px;font-size:13px;color:#42be65;text-align:center;font-weight:600}
+
+/* staffing table */
+.wp-table{width:100%;border-collapse:collapse;font-size:12px}
+.wp-table th{background:#1a1a1a;padding:8px 12px;text-align:left;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#8d8d8d;border-bottom:1px solid #393939}
+.wp-table td{padding:8px 12px;border-bottom:1px solid #262626;color:#c6c6c6}
+.wp-table tr:hover td{background:#1f1f1f}
+.role-tag{display:inline-block;font-size:9px;padding:2px 6px;border-radius:2px;font-weight:700}
+.rt-arch{background:#0f2354;color:#78a9ff}
+.rt-dev{background:#1a3b1a;color:#42be65}
+.rt-qa{background:#2a1a2e;color:#a56eff}
+.rt-pm{background:#1a2a1a;color:#6fdc8c}
+
+/* ── SCENE 3: ACCOUNT INTELLIGENCE ENGINE ─────────────────── */
+#s3{background:#0d1117;color:#f4f4f4;padding-bottom:62px}
+.ai-header{background:#050f2d;border-bottom:2px solid var(--ibm-blue);padding:14px 32px;display:flex;align-items:center;gap:16px;flex-shrink:0}
+.ai-logo{font-size:22px;font-weight:800;letter-spacing:.14em;color:var(--ibm-blue);font-style:italic}
+.ai-title{font-size:18px;font-weight:700;color:#fff}
+.ai-sub{font-size:11px;color:#78a9ff;text-transform:uppercase;letter-spacing:.08em}
+.ai-body{flex:1;min-height:0;display:grid;grid-template-columns:340px 1fr;gap:0;overflow:hidden}
+.ai-form-panel{padding:20px 24px;border-right:1px solid #1d2b50;background:#060d1e;display:flex;flex-direction:column;gap:12px;overflow:auto}
+.ai-field{display:flex;flex-direction:column;gap:6px}
+.ai-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:#78a9ff}
+.ai-input{background:#0d1b3e;border:1px solid #1d2b50;border-radius:4px;padding:10px 14px;color:#f4f4f4;font-size:13px}
+.ai-input.filled{border-color:var(--ibm-blue);color:#fff}
+.ai-btn{background:var(--ibm-blue);color:#fff;border:none;border-radius:4px;padding:14px;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:.04em;text-transform:uppercase;margin-top:8px}
+.ai-report-panel{padding:16px 24px;overflow:auto;display:flex;flex-direction:column;gap:10px}
+.ai-section{background:#111a2e;border:1px solid #1d2b50;border-left:3px solid var(--ibm-blue);border-radius:0 6px 6px 0;padding:14px 16px}
+.ai-sec-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--ibm-blue);margin-bottom:6px}
+.ai-sec-body{font-size:13px;color:#c6c6c6;line-height:1.6}
+.ai-sec-body strong{color:#fff}
+/* streaming cursor */
+.cursor{display:inline-block;width:2px;height:14px;background:var(--ibm-blue);animation:blink-cur .75s infinite}
+@keyframes blink-cur{0%,49%{opacity:1}50%,100%{opacity:0}}
+.ai-streaming-bar{background:#0a1428;border:1px solid #1d2b50;border-radius:4px;padding:12px 16px;display:flex;align-items:center;gap:12px;font-size:12px;color:#78a9ff}
+.ai-dot{width:8px;height:8px;border-radius:50%;background:var(--ibm-green);animation:blink-led 1.5s infinite}
+@keyframes blink-led{0%,100%{opacity:1}50%{opacity:.2}}
+
+/* ── SCENE 4: MCSA / MULTI-AGENT ──────────────────────────── */
+#s4{background:#0a0a0a;color:#f4f4f4;padding-bottom:62px}
+.mcsa-hdr{display:flex;align-items:center;justify-content:space-between;padding:10px 24px;background:#050505;border-bottom:1px solid #3d3d3d;flex-shrink:0}
+.mcsa-brand{display:flex;align-items:center;gap:12px}
+.mcsa-ibm{font-size:20px;font-weight:800;letter-spacing:.14em;color:var(--ibm-blue);font-style:italic}
+.mcsa-title{font-size:14px;font-weight:600;background:linear-gradient(90deg,#4589ff,#a56eff,#08bdba);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.mcp-bar{display:flex;gap:6px;align-items:center}
+.mcp-lbl{font-size:9px;color:#8d8d8d;text-transform:uppercase;letter-spacing:.06em}
+.mcp-pill{font-size:9px;padding:2px 8px;border-radius:10px;background:#262626;border:1px solid #3d3d3d;color:#8d8d8d;display:flex;align-items:center;gap:3px}
+.mcp-pill.active{color:#42be65;border-color:#198038;background:#042e0b}
+.led-dot{width:5px;height:5px;border-radius:50%;background:#42be65;animation:blink-led 2s infinite}
+.mcsa-layout{display:grid;grid-template-columns:260px 1fr 270px;flex:1;min-height:0;overflow:hidden}
+/* avatar col */
+.av-col{background:#070707;border-right:1px solid #3d3d3d;padding:14px 14px;display:flex;flex-direction:column;gap:10px;overflow:hidden}
+.av-scene{position:relative;width:110px;height:154px;margin:0 auto}
+.av-glow{position:absolute;top:8px;left:50%;transform:translateX(-50%);width:94px;height:94px;border-radius:50%;background:radial-gradient(#0f62fe28 0%,transparent 70%);animation:av-glow 2.8s infinite ease-in-out}
+@keyframes av-glow{0%,100%{opacity:.5;transform:translateX(-50%) scale(1)}50%{opacity:1;transform:translateX(-50%) scale(1.38)}}
+.av-head{position:absolute;top:8px;left:50%;transform:translateX(-50%);width:88px;height:88px;border-radius:50%;background:linear-gradient(145deg,#262626,#393939);border:2.5px solid var(--ibm-blue);overflow:hidden;animation:head-bob 4.5s infinite ease-in-out}
+@keyframes head-bob{0%,100%{transform:translateX(-50%) rotate(0)}25%{transform:translateX(-50%) rotate(-3.5deg)}75%{transform:translateX(-50%) rotate(3.5deg)}}
+.av-eyes{position:absolute;top:36px;left:50%;transform:translateX(-50%);display:flex;gap:18px}
+.av-eye{width:15px;height:15px;border-radius:50%;background:var(--ibm-blue);display:flex;align-items:center;justify-content:center;animation:eye-blink 6s infinite}
+@keyframes eye-blink{0%,88%,100%{transform:scaleY(1)}94%{transform:scaleY(.08)}}
+.av-pupil{width:7px;height:7px;border-radius:50%;background:#fff;animation:pupil-drift 5s infinite ease-in-out}
+@keyframes pupil-drift{0%,100%{transform:translate(0,0)}33%{transform:translate(2px,-1.5px)}66%{transform:translate(-2px,1px)}}
+.av-mouth{position:absolute;top:62px;left:50%;transform:translateX(-50%);width:26px;height:9px;border-radius:0 0 14px 14px;border:2.5px solid var(--ibm-blue);border-top:none;animation:mouth-idle 3.5s infinite ease-in-out}
+@keyframes mouth-idle{0%,100%{width:26px;height:9px}50%{width:22px;height:8px}}
+.av-body{position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:66px;height:52px;background:#262626;border-radius:10px 10px 6px 6px;border:2px solid var(--ibm-blue);display:flex;align-items:center;justify-content:center}
+.chest{display:flex;gap:7px}
+.ch{width:9px;height:9px;border-radius:50%}
+.av-name{text-align:center;font-size:13px;font-weight:700;color:var(--ibm-blue);margin-top:8px}
+.av-role{text-align:center;font-size:10px;color:#8d8d8d;margin-top:2px}
+/* agents list */
+.agent-list-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#8d8d8d;padding-bottom:6px;border-bottom:1px solid #3d3d3d}
+.agent-item{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #1a1a1a;font-size:11px;color:#c6c6c6}
+.agent-led{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.agent-led.busy{background:#f1c21b;animation:blink-led 1s infinite}
+.agent-led.done{background:#42be65}
+.agent-led.idle{background:#393939}
+/* main col */
+.mcsa-main{padding:14px 22px;overflow:auto;display:flex;flex-direction:column;gap:10px}
+.mcsa-tabs{display:flex;gap:2px;background:#111;border-bottom:1px solid #3d3d3d;margin:-14px -22px 0;padding:0 22px}
+.mcsa-tab{padding:10px 16px;font-size:12px;font-weight:600;color:#8d8d8d;border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap}
+.mcsa-tab.active{color:#4589ff;border-bottom-color:#0f62fe}
+/* BOM table */
+.bom-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:12px}
+.bom-table th{background:#161616;padding:8px 12px;text-align:left;font-size:10px;text-transform:uppercase;color:#8d8d8d;border-bottom:1px solid #3d3d3d;letter-spacing:.05em}
+.bom-table td{padding:8px 12px;border-bottom:1px solid #1a1a1a;color:#c6c6c6}
+.bom-total{background:#1a1a1a;font-weight:700;color:#f4f4f4}
+/* feed col */
+.feed-col{background:#070707;border-left:1px solid #3d3d3d;display:flex;flex-direction:column;overflow:hidden}
+.feed-header{padding:10px 16px;background:#050505;border-bottom:1px solid #3d3d3d;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#8d8d8d;flex-shrink:0}
+.feed-body{flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:6px}
+.feed-item{background:#111;border:1px solid #1a1a1a;border-radius:3px;padding:8px 10px;font-size:11px;color:#c6c6c6;line-height:1.5}
+.feed-item .fi-agent{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#4589ff;margin-bottom:3px}
+.feed-item.success .fi-agent{color:#42be65}
+.feed-item.warn .fi-agent{color:#f1c21b}
+
+/* ── SCENE 5: ROI DASHBOARD ───────────────────────────────── */
+#s5{background:#0f1623;color:#f4f4f4;padding-bottom:62px}
+.roi-header{background:#050b1a;border-bottom:2px solid var(--ibm-blue);padding:16px 40px;flex-shrink:0}
+.roi-h1{font-size:30px;font-weight:800;color:#fff}
+.roi-sub{font-size:14px;color:#78a9ff;margin-top:4px}
+.roi-body{flex:1;min-height:0;padding:18px 40px;display:grid;grid-template-columns:1fr 1fr;gap:20px;overflow:hidden}
+.roi-panel{background:#111a2e;border:1px solid #1d2b50;border-radius:6px;padding:16px 20px;overflow:hidden;display:flex;flex-direction:column}
+.roi-panel-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#78a9ff;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid #1d2b50}
+.roi-big{text-align:center;padding:24px 0}
+.roi-big-val{font-size:64px;font-weight:800;color:var(--ibm-blue);line-height:1}
+.roi-big-label{font-size:14px;color:#78a9ff;margin-top:8px}
+.roi-metrics-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.roi-metric{background:#0d1428;border:1px solid #1d2b50;border-radius:4px;padding:14px;text-align:center}
+.roi-mval{font-size:28px;font-weight:800;color:#f4f4f4}
+.roi-mlabel{font-size:10px;color:#78a9ff;text-transform:uppercase;letter-spacing:.06em;margin-top:4px}
+.roi-mval.green{color:#42be65}
+.roi-mval.orange{color:#f1c21b}
+.roi-mval.purple{color:#a56eff}
+/* bar chart */
+.bar-chart{display:flex;flex-direction:column;gap:10px;margin-top:8px}
+.bar-row{display:flex;align-items:center;gap:10px;font-size:12px}
+.bar-label{width:140px;color:#c6c6c6;flex-shrink:0}
+.bar-track{flex:1;height:24px;background:#0d1428;border-radius:3px;overflow:hidden}
+.bar-fill{height:100%;display:flex;align-items:center;padding:0 8px;font-size:11px;font-weight:700;color:#fff;border-radius:3px;transition:width 1s ease}
+.bar-fill.blue{background:var(--ibm-blue)}
+.bar-fill.green{background:#198038}
+.bar-fill.orange{background:#d97706}
+.bar-fill.purple{background:#6929c4}
+.bar-fill.trad{background:#c8371a}
+
+/* ── SCENE 6: CLOSING SLIDE ──────────────────────────────── */
+#s6{background:radial-gradient(ellipse 80% 70% at 40% 50%,#050f2d 0%,#04061a 100%)}
+.close-inner{flex:1;min-height:0;display:flex;gap:60px;align-items:center;justify-content:center;padding:40px 60px 90px;position:relative;z-index:1}
+.close-left{flex:1;max-width:600px}
+.close-eyebrow{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#78a9ff;margin-bottom:18px}
+.close-h1{font-size:64px;font-weight:800;letter-spacing:-.03em;color:#fff;line-height:1.05;margin-bottom:24px}
+.close-h1 span{color:var(--ibm-blue)}
+.close-body{font-size:18px;color:#c8d9ff;line-height:1.7;margin-bottom:36px}
+.close-steps{display:flex;flex-direction:column;gap:12px}
+.close-step{display:flex;align-items:flex-start;gap:14px;background:rgba(15,98,254,.12);border:1px solid rgba(15,98,254,.3);border-radius:4px;padding:14px 16px}
+.cs-num{width:28px;height:28px;border-radius:50%;background:var(--ibm-blue);color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.cs-body{font-size:14px;color:#f4f4f4;line-height:1.5}
+.cs-body strong{color:#fff}
+.close-right{display:flex;flex-direction:column;gap:16px;min-width:280px}
+.close-stat{background:rgba(15,98,254,.15);border:1px solid rgba(15,98,254,.35);border-radius:6px;padding:20px 24px;text-align:center}
+.cs-val{font-size:52px;font-weight:800;color:#fff;line-height:1}
+.cs-lbl{font-size:12px;color:#78a9ff;text-transform:uppercase;letter-spacing:.08em;margin-top:6px}
+.ibm-watermark{position:absolute;bottom:20px;right:40px;font-size:60px;font-weight:800;letter-spacing:.14em;color:rgba(255,255,255,.04);font-style:italic;pointer-events:none}
+</style>
+</head>
+<body>
+<div id="shell">
+
+  <!-- TOP BAR -->
+  <div id="topbar">
+    <span class="ibm-logo-top">IBM</span>
+    <div class="top-sep"></div>
+    <span class="top-title">SolutionIntel · AI-Powered Consulting Intelligence Platform</span>
+    <span class="top-badge">EXECUTIVE DEMO</span>
+    <div class="top-right">
+      <div id="progress-outer"><div id="progress-inner"></div></div>
+      <div id="timer-display">3:00</div>
+    </div>
+  </div>
+
+  <div id="scenes">
+
+    <!-- ══════════════════════════════════════════════════════════
+         SCENE 0 — Title Card  (0:00 – 0:20)
+    ══════════════════════════════════════════════════════════════ -->
+    <div class="scene active" id="s0">
+      <div class="s0-grid"></div>
+      <div class="s0-inner">
+        <div class="s0-eyebrow">IBM Consulting · AI-Powered Delivery · Pradeep Lamba</div>
+        <div class="s0-h1">Solution<span>Intel</span></div>
+        <div class="s0-tagline">The AI Platform That Wins Deals, Prepares Teams &amp; Delivers Value</div>
+        <div class="s0-metrics">
+          <div class="s0-m"><div class="s0-mv">90%</div><div class="s0-ml">Faster Proposals</div></div>
+          <div class="s0-m"><div class="s0-mv green">$2.2M</div><div class="s0-ml">Saving Per Bid</div></div>
+          <div class="s0-m"><div class="s0-mv orange">3.2×</div><div class="s0-ml">ROI Delivered</div></div>
+          <div class="s0-m"><div class="s0-mv purple">34%</div><div class="s0-ml">AI Cost Saving</div></div>
+        </div>
+      </div>
+      <div class="caption">
+        <span class="cap-scene">Intro</span>
+        <span class="cap-text">Welcome to <strong>SolutionIntel</strong> — IBM's AI-powered platform for consulting delivery. Built by one IBM practitioner. Running in production today.</span>
+        <span class="cap-time">0:00 – 0:20</span>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════
+         SCENE 1 — Platform Portal  (0:20 – 0:50)
+    ══════════════════════════════════════════════════════════════ -->
+    <div class="scene" id="s1">
+      <div class="portal-header">
+        <div class="ph-eye">IBM Consulting · SolutionIntel AI Platform</div>
+        <div class="ph-h1">AI-Powered Intelligence Platform</div>
+        <div class="ph-sub">A suite of browser-based AI tools for consulting delivery — no installation, no login, instant access from any device.</div>
+      </div>
+      <div class="portal-body">
+        <div class="portal-section-title">RFP &amp; Bid Intelligence</div>
+        <div class="portal-grid">
+          <div class="portal-card blue">
+            <span class="card-tag tag-blue">Flagship</span>
+            <h3>WinPath Pro</h3>
+            <p>AI-powered RFP analysis &amp; proposal generation. Upload any RFP and get a fully costed, staffed proposal in minutes.</p>
+          </div>
+          <div class="portal-card blue">
+            <span class="card-tag tag-blue">Analytics</span>
+            <h3>RFP Analyzer Pro</h3>
+            <p>Production readiness reporting, win probability scoring, and proposal quality benchmarking across the bid portfolio.</p>
+          </div>
+          <div class="portal-card green">
+            <span class="card-tag tag-green">Intelligence</span>
+            <h3>Account Intelligence</h3>
+            <p>10-section executive briefing for any client, any industry, any geography — generated by AI in under 2 minutes.</p>
+          </div>
+          <div class="portal-card purple">
+            <span class="card-tag tag-purple">Multi-Agent</span>
+            <h3>AMS Estimation</h3>
+            <p>6 AI agents orchestrated simultaneously to generate enterprise AMS estimates, staffing plans &amp; Bills of Materials.</p>
+          </div>
+        </div>
+        <div class="portal-section-title">Estimation &amp; Delivery Tools</div>
+        <div class="portal-grid">
+          <div class="portal-card teal">
+            <span class="card-tag tag-teal">Maximo</span>
+            <h3>MCSA Analyzer</h3>
+            <p>Maximo Complete Solution Analyzer with real-time multi-agent orchestration and IBM product Bill of Materials generation.</p>
+          </div>
+          <div class="portal-card orange">
+            <span class="card-tag tag-orange">Salesforce</span>
+            <h3>Salesforce AMS</h3>
+            <p>5-year AMS estimation for Salesforce platforms with AI-driven productivity modelling and GreenSTAR governance.</p>
+          </div>
+          <div class="portal-card teal">
+            <span class="card-tag tag-teal">Governance</span>
+            <h3>GreenSTAR MCP</h3>
+            <p>IBM's internal deal governance framework, embedded as a Model Context Protocol server for real-time compliance.</p>
+          </div>
+          <div class="portal-card blue">
+            <span class="card-tag tag-blue">HCM</span>
+            <h3>HCM Productivity MCP</h3>
+            <p>Human Capital Management productivity benchmarks and FTE modelling aligned to IBM delivery standards.</p>
+          </div>
+        </div>
+      </div>
+      <div class="caption">
+        <span class="cap-scene">Scene 1</span>
+        <span class="cap-text"><strong>The Platform Portal</strong> — 8 AI-powered tools running entirely in-browser. No installation. No login. Available to any IBM consultant, anywhere in the world, in under 30 seconds.</span>
+        <span class="cap-time">0:20 – 0:50</span>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════
+         SCENE 2 — WinPath Pro / Dashboard  (0:50 – 1:20)
+    ══════════════════════════════════════════════════════════════ -->
+    <div class="scene" id="s2">
+      <div class="wp-header">
+        <span class="wp-ibm">IBM</span>
+        <div class="wp-sep"></div>
+        <span class="wp-prod">WinPath Pro</span>
+        <div class="wp-sep"></div>
+        <span class="wp-sub">RFP Intelligence Platform</span>
+        <div class="wp-avatar">PL</div>
+      </div>
+      <div class="wp-body">
+        <div class="wp-sidebar">
+          <div class="wp-ni">📄 Document</div>
+          <div class="wp-ni">🔍 Scope</div>
+          <div class="wp-ni active">📊 Dashboard</div>
+          <div class="wp-ni">👥 Staffing</div>
+          <div class="wp-ni">💰 Cost</div>
+          <div class="wp-ni">🤖 AI Impact</div>
+          <div class="wp-ni">📝 Proposal</div>
+          <div class="wp-ni">📤 Send</div>
+        </div>
+        <div class="wp-main">
+          <div class="wp-page-header">
+            <span class="wp-page-title">Executive Dashboard</span>
+            <span class="wp-page-desc">— Ashghal Enterprise Asset Management RFP · Qatar</span>
+          </div>
+          <div class="wp-content">
+            <div class="wp-g4">
+              <div class="wp-kpi"><div class="wp-kv">$4.2M</div><div class="wp-kl">Total Cost (Fixed)</div></div>
+              <div class="wp-kpi"><div class="wp-kv green">26 wks</div><div class="wp-kl">Timeline</div></div>
+              <div class="wp-kpi"><div class="wp-kv orange">24 FTE</div><div class="wp-kl">Peak Headcount</div></div>
+              <div class="wp-kpi"><div class="wp-kv purple">34%</div><div class="wp-kl">AI Cost Saving</div></div>
+            </div>
+            <div class="comp-bar">
+              <div style="font-size:12px;color:#8d8d8d;margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:.06em">Cost Comparison — AI-Assisted vs Traditional Delivery</div>
+              <div class="comp-row">
+                <div class="comp-label">Traditional Delivery</div>
+                <div class="comp-track"><div class="comp-fill trad">$6.4M — 247 consultants</div></div>
+                <div class="comp-val" style="color:#c8371a">$6.4M</div>
+              </div>
+              <div class="comp-row">
+                <div class="comp-label">AI-Assisted (WinPath Pro)</div>
+                <div class="comp-track"><div class="comp-fill ai">$4.2M — 24 FTE</div></div>
+                <div class="comp-val" style="color:#0f62fe">$4.2M</div>
+              </div>
+              <div class="saving-pill">🎯 AI Saving: <strong>$2.2M (34.4%)</strong> on a single engagement · Win probability: <strong>73%</strong></div>
+            </div>
+            <div style="overflow:auto;max-height:250px">
+              <table class="wp-table">
+                <thead>
+                  <tr><th>Role</th><th>Band</th><th>Allocation</th><th>Rate ($/hr)</th><th>Phase</th><th>FTE</th><th>Est. Cost</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td><span class="role-tag rt-arch">Solution Architect</span></td><td>Band 8</td><td>Onshore 40% / Offshore 60%</td><td>$285</td><td>All Phases</td><td>2</td><td>$218,400</td></tr>
+                  <tr><td><span class="role-tag rt-dev">MAS Functional Lead</span></td><td>Band 7</td><td>Offshore 80%</td><td>$195</td><td>Design–Build</td><td>3</td><td>$312,000</td></tr>
+                  <tr><td><span class="role-tag rt-dev">Integration Developer</span></td><td>Band 6</td><td>Offshore 100%</td><td>$145</td><td>Build–Integration</td><td>5</td><td>$290,000</td></tr>
+                  <tr><td><span class="role-tag rt-qa">QA Engineer</span></td><td>Band 5</td><td>Offshore 90%</td><td>$120</td><td>Test–Deploy</td><td>4</td><td>$192,000</td></tr>
+                  <tr><td><span class="role-tag rt-pm">Project Manager</span></td><td>Band 8</td><td>Onshore 70%</td><td>$260</td><td>All Phases</td><td>1</td><td>$156,000</td></tr>
+                  <tr><td><span class="role-tag rt-dev">Data Migration Spec.</span></td><td>Band 6</td><td>Offshore 85%</td><td>$140</td><td>Build</td><td>3</td><td>$168,000</td></tr>
+                  <tr><td><span class="role-tag rt-arch">Change Mgmt Lead</span></td><td>Band 7</td><td>Onshore 60%</td><td>$220</td><td>Deploy–Hypercare</td><td>2</td><td>$132,000</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="caption">
+        <span class="cap-scene">Scene 2</span>
+        <span class="cap-text"><strong>WinPath Pro · Dashboard</strong> — The Ashghal RFP (Qatar) fully analysed: $4.2M fixed price · 26 weeks · 24 FTE · 34% AI saving vs traditional delivery. A complete proposal in a browser tab.</span>
+        <span class="cap-time">0:50 – 1:20</span>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════
+         SCENE 3 — Account Intelligence Engine  (1:20 – 1:50)
+    ══════════════════════════════════════════════════════════════ -->
+    <div class="scene" id="s3">
+      <div class="ai-header">
+        <span class="ai-logo">IBM</span>
+        <div>
+          <div class="ai-title">Strategic Account Intelligence Engine</div>
+          <div class="ai-sub">Powered by watsonx · Real-time AI generation · 10 sections · Under 2 minutes</div>
+        </div>
+        <div class="mcp-bar" style="margin-left:auto;gap:6px">
+          <span class="mcp-lbl">MCP Servers:</span>
+          <span class="mcp-pill active"><span class="led-dot"></span> GreenSTAR</span>
+          <span class="mcp-pill active"><span class="led-dot"></span> HCM Productivity</span>
+          <span class="mcp-pill active"><span class="led-dot"></span> Bid Metrics</span>
+        </div>
+      </div>
+      <div class="ai-body">
+        <div class="ai-form-panel">
+          <div style="font-size:13px;font-weight:700;color:#78a9ff;margin-bottom:8px">Generate Account Intelligence Report</div>
+          <div class="ai-field">
+            <div class="ai-label">Organisation</div>
+            <div class="ai-input filled">Saudi Aramco</div>
+          </div>
+          <div class="ai-field">
+            <div class="ai-label">Industry</div>
+            <div class="ai-input filled">Energy &amp; Utilities</div>
+          </div>
+          <div class="ai-field">
+            <div class="ai-label">Sub-Sector</div>
+            <div class="ai-input filled">Oil &amp; Gas — Upstream / Midstream</div>
+          </div>
+          <div class="ai-field">
+            <div class="ai-label">Geography</div>
+            <div class="ai-input filled">Middle East · Saudi Arabia</div>
+          </div>
+          <div class="ai-field">
+            <div class="ai-label">Focus Areas</div>
+            <div class="ai-input filled">Digital transformation, AI/ML, Asset Mgmt</div>
+          </div>
+          <div class="ai-btn">✓ Report Generated</div>
+          <div class="ai-streaming-bar"><span class="ai-dot"></span> AI generation complete · 10 sections · 2,847 words · 1m 38s</div>
+        </div>
+        <div class="ai-report-panel">
+          <div class="ai-section" style="border-left-color:#0f62fe">
+            <div class="ai-sec-title">1 · Organisation Overview</div>
+            <div class="ai-sec-body"><strong>Saudi Aramco</strong> is the world's largest integrated energy and chemicals company, producing ~12M barrels/day. Vision 2030 alignment drives a $100B+ digital transformation agenda, with IBM positioned as a preferred partner for enterprise technology, AI, and managed services across all business units. Active SAP, Maximo, and cloud modernisation programmes create a <strong>$380M addressable IBM opportunity</strong> over 36 months.<span class="cursor"></span></div>
+          </div>
+          <div class="ai-section" style="border-left-color:#6929c4">
+            <div class="ai-sec-title">3 · IBM's Unique Value Proposition</div>
+            <div class="ai-sec-body">IBM's differentiation for Aramco: <strong>watsonx AI</strong> on IBM Cloud in KSA sovereign region; <strong>Maximo MAS</strong> deep domain expertise matching their 80,000-asset fleet; <strong>IBM Consulting's GreenSTAR</strong> governance ensuring compliant, auditable AI deployment; and a <strong>260-person IBM Saudi Arabia</strong> delivery footprint providing local language and regulatory capability competitors cannot match.</div>
+          </div>
+          <div class="ai-section" style="border-left-color:#007d79">
+            <div class="ai-sec-title">4 · Top 5 IBM Solution Plays</div>
+            <div class="ai-sec-body">
+              <strong>1.</strong> Maximo Application Suite — upstream asset lifecycle management ($45M ACV)<br/>
+              <strong>2.</strong> watsonx.ai — predictive maintenance and anomaly detection on SCADA data<br/>
+              <strong>3.</strong> IBM Cloud Pak for Data — enterprise data fabric across 14 business units<br/>
+              <strong>4.</strong> SAP on IBM Cloud — S/4HANA migration with IBM Garage methodology<br/>
+              <strong>5.</strong> IBM Consulting Managed Services — 24/7 AMS across all enterprise platforms
+            </div>
+          </div>
+          <div class="ai-section" style="border-left-color:#d97706">
+            <div class="ai-sec-title">5 · Competitive Positioning</div>
+            <div class="ai-sec-body">
+              <strong>vs Accenture:</strong> IBM wins on AI governance and sovereign cloud. Accenture stronger on UI/CX.<br/>
+              <strong>vs SAP:</strong> IBM neutral — position as implementation partner, not competitor.<br/>
+              <strong>vs AWS/Azure:</strong> IBM wins on regulated industry compliance, data residency, and Maximo.<br/>
+              <strong>vs TCS/Infosys:</strong> IBM wins on brand, governance, and executive-level client relationships.
+            </div>
+          </div>
+          <div class="ai-section" style="border-left-color:#198038">
+            <div class="ai-sec-title">9 · 90-Day Activation Plan</div>
+            <div class="ai-sec-body">
+              <strong>Days 1–30:</strong> Executive sponsorship alignment · CTO/CDO stakeholder mapping · IBM Garage discovery workshop<br/>
+              <strong>Days 31–60:</strong> watsonx Proof-of-Concept on predictive maintenance · Maximo MAS pilot scope definition<br/>
+              <strong>Days 61–90:</strong> PoC results readout · full business case · contract negotiation commencement
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="caption">
+        <span class="cap-scene">Scene 3</span>
+        <span class="cap-text"><strong>Account Intelligence Engine</strong> — A 10-section executive briefing on Saudi Aramco, generated by IBM's AI in under 2 minutes. What previously took 3–5 days of research, delivered instantly.</span>
+        <span class="cap-time">1:20 – 1:50</span>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════
+         SCENE 4 — MCSA Multi-Agent  (1:50 – 2:20)
+    ══════════════════════════════════════════════════════════════ -->
+    <div class="scene" id="s4">
+      <div class="mcsa-hdr">
+        <div class="mcsa-brand">
+          <span class="mcsa-ibm">IBM</span>
+          <div>
+            <div class="mcsa-title">Maximo Complete Solution Analyzer · Multi-Agent AI</div>
+            <div style="font-size:10px;color:#8d8d8d">Enterprise AMS Estimation · Bill of Materials · Integration Mapping</div>
+          </div>
+        </div>
+        <div class="mcp-bar">
+          <span class="mcp-lbl">Active MCP Servers:</span>
+          <span class="mcp-pill active"><span class="led-dot"></span> IBM Solution Configurator</span>
+          <span class="mcp-pill active"><span class="led-dot"></span> watsonx Orchestrate</span>
+          <span class="mcp-pill active"><span class="led-dot"></span> GreenSTAR</span>
+          <span class="mcp-pill active"><span class="led-dot"></span> HCM Productivity</span>
+          <span class="mcp-pill active"><span class="led-dot"></span> Bid Metrics</span>
+        </div>
+      </div>
+      <div class="mcsa-layout" style="flex:1;display:grid;grid-template-columns:260px 1fr 270px;overflow:hidden">
+        <!-- Avatar column -->
+        <div class="av-col">
+          <div class="av-scene">
+            <div class="av-glow"></div>
+            <div class="av-head">
+              <div class="av-ibm" style="position:absolute;top:7px;left:50%;transform:translateX(-50%);font-size:8px;font-weight:700;letter-spacing:.15em;color:#4589ff;white-space:nowrap">IBM</div>
+              <div class="av-eyes">
+                <div class="av-eye"><div class="av-pupil"></div></div>
+                <div class="av-eye"><div class="av-pupil"></div></div>
+              </div>
+              <div class="av-mouth"></div>
+            </div>
+            <div class="av-body">
+              <div class="chest">
+                <div class="ch" style="background:#0f62fe;animation:blink-led 1.8s infinite"></div>
+                <div class="ch" style="background:#a56eff;animation:blink-led 2.2s .5s infinite"></div>
+                <div class="ch" style="background:#42be65;animation:blink-led 1.5s .9s infinite"></div>
+              </div>
+            </div>
+          </div>
+          <div class="av-name">MAX</div>
+          <div class="av-role">Enterprise AMS AI Assistant</div>
+          <div class="agent-list-title" style="margin-top:8px">AI AGENT STATUS</div>
+          <div class="agent-item"><div class="agent-led done"></div>Document Parser</div>
+          <div class="agent-item"><div class="agent-led done"></div>Requirements Mapper</div>
+          <div class="agent-item"><div class="agent-led busy"></div>Effort Estimator</div>
+          <div class="agent-item"><div class="agent-led busy"></div>Staffing Planner</div>
+          <div class="agent-item"><div class="agent-led idle"></div>Cost Calculator</div>
+          <div class="agent-item"><div class="agent-led idle"></div>Market Benchmarker</div>
+          <div class="agent-item" style="margin-top:4px;border-top:1px solid #393939;padding-top:8px"><div class="agent-led busy" style="background:#f1c21b"></div><strong>Estimation Coordinator</strong></div>
+        </div>
+        <!-- Main column -->
+        <div class="mcsa-main">
+          <div class="mcsa-tabs">
+            <div class="mcsa-tab">RFP Analysis</div>
+            <div class="mcsa-tab">Scope</div>
+            <div class="mcsa-tab active">Bill of Materials</div>
+            <div class="mcsa-tab">Integration Map</div>
+            <div class="mcsa-tab">AMS Estimate</div>
+          </div>
+          <div style="padding-top:14px">
+            <div style="font-size:13px;font-weight:700;color:#f4f4f4;margin-bottom:4px">IBM Product Bill of Materials — Eskom Utility (South Africa)</div>
+            <div style="font-size:11px;color:#8d8d8d;margin-bottom:12px">Auto-generated by IBM Solution Configurator MCP · 2,500 users · 22 Maximo modules · 24×7 AMS</div>
+            <table class="bom-table">
+              <thead>
+                <tr><th>#</th><th>IBM Product</th><th>Part Number</th><th>Qty</th><th>Unit</th><th>Unit Price</th><th>Annual Cost</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>1</td><td>Maximo Application Suite — Manage</td><td>D18HZLL</td><td>2,500</td><td>AppPoint</td><td>$980</td><td>$2,450,000</td></tr>
+                <tr><td>2</td><td>Maximo Application Suite — Health</td><td>D18JXLL</td><td>2,500</td><td>AppPoint</td><td>$620</td><td>$1,550,000</td></tr>
+                <tr><td>3</td><td>watsonx.ai — Predict Deployment</td><td>5900-AAX</td><td>1</td><td>Instance</td><td>$180,000</td><td>$180,000</td></tr>
+                <tr><td>4</td><td>IBM Cloud Object Storage — 100TB</td><td>SLCOS100</td><td>1</td><td>TB Package</td><td>$45,000</td><td>$45,000</td></tr>
+                <tr><td>5</td><td>OpenPages — Regulatory Compliance</td><td>D1JPLLL</td><td>500</td><td>User</td><td>$420</td><td>$210,000</td></tr>
+                <tr><td>6</td><td>IBM Instana — Observability</td><td>5724-I63</td><td>1</td><td>Server</td><td>$85,000</td><td>$85,000</td></tr>
+                <tr><td>7</td><td>IBM Consulting Managed Services — AMS</td><td>SVC-AMS-24</td><td>1</td><td>Contract</td><td>$2,800,000</td><td>$2,800,000</td></tr>
+                <tr class="bom-total"><td colspan="6" style="text-align:right;padding-right:16px">Total Annual Contract Value</td><td>$7,320,000</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <!-- Feed column -->
+        <div class="feed-col">
+          <div class="feed-header">AGENT ACTIVITY FEED</div>
+          <div class="feed-body">
+            <div class="feed-item success"><div class="fi-agent">Document Parser ✓</div>RFP extracted: 18,420 words · 24 sections · 47 requirements catalogued</div>
+            <div class="feed-item success"><div class="fi-agent">Requirements Mapper ✓</div>47 requirements mapped → 12 IBM solution areas · 3 gap items flagged</div>
+            <div class="feed-item"><div class="fi-agent">Effort Estimator (running)</div>Calculating FTE requirements: 2,500 users × 22 modules × AMS complexity factor 1.4...</div>
+            <div class="feed-item warn"><div class="fi-agent">Staffing Planner (running)</div>GreenSTAR check: onshore/offshore ratio review required for BBBEE compliance</div>
+            <div class="feed-item"><div class="fi-agent">Solution Configurator MCP</div>IBM product catalogue query: Maximo AppPoints for 2,500 users — D18HZLL confirmed</div>
+            <div class="feed-item"><div class="fi-agent">Solution Configurator MCP</div>watsonx.ai Predict pricing fetched: $180,000/year instance for Eskom environment</div>
+            <div class="feed-item success"><div class="fi-agent">BOM Generator ✓</div>Bill of Materials complete: 7 line items · Total ACV: $7,320,000 per year</div>
+            <div class="feed-item"><div class="fi-agent">Estimation Coordinator</div>Orchestrating final synthesis → AMS estimate + staffing plan + risk register pending...</div>
+          </div>
+        </div>
+      </div>
+      <div class="caption">
+        <span class="cap-scene">Scene 4</span>
+        <span class="cap-text"><strong>MCSA Multi-Agent Platform</strong> — 6 AI agents working simultaneously. Maximo BOM auto-generated for Eskom: $7.32M ACV · 7 IBM product lines · GreenSTAR governance embedded. In minutes, not days.</span>
+        <span class="cap-time">1:50 – 2:20</span>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════
+         SCENE 5 — ROI Dashboard  (2:20 – 2:45)
+    ══════════════════════════════════════════════════════════════ -->
+    <div class="scene" id="s5">
+      <div class="roi-header">
+        <div class="roi-h1">Business Impact &amp; ROI</div>
+        <div class="roi-sub">SolutionIntel · Measured outcomes across the IBM Consulting bid and delivery portfolio</div>
+      </div>
+      <div class="roi-body">
+        <div class="roi-panel">
+          <div class="roi-panel-title">Per-Engagement Impact</div>
+          <div class="roi-metrics-grid">
+            <div class="roi-metric"><div class="roi-mval">90%</div><div class="roi-mlabel">Faster Bid Prep</div></div>
+            <div class="roi-metric"><div class="roi-mval green">$2.2M</div><div class="roi-mlabel">Saving Per Deal</div></div>
+            <div class="roi-metric"><div class="roi-mval orange">73%</div><div class="roi-mlabel">Win Probability</div></div>
+            <div class="roi-metric"><div class="roi-mval purple">87/100</div><div class="roi-mlabel">Proposal Score</div></div>
+          </div>
+          <div style="margin-top:16px">
+            <div class="bar-chart">
+              <div class="bar-row">
+                <div class="bar-label">Proposal prep time</div>
+                <div class="bar-track"><div class="bar-fill blue" style="width:10%">1–2 days (AI)</div></div>
+              </div>
+              <div class="bar-row">
+                <div class="bar-label">Traditional approach</div>
+                <div class="bar-track"><div class="bar-fill trad" style="width:100%">2–6 weeks</div></div>
+              </div>
+              <div class="bar-row" style="margin-top:8px">
+                <div class="bar-label">AI-assisted cost</div>
+                <div class="bar-track"><div class="bar-fill blue" style="width:66%">$4.2M (34% saving)</div></div>
+              </div>
+              <div class="bar-row">
+                <div class="bar-label">Traditional cost</div>
+                <div class="bar-track"><div class="bar-fill trad" style="width:100%">$6.4M</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="roi-panel">
+          <div class="roi-panel-title">3-Year Portfolio ROI</div>
+          <div class="roi-big"><div class="roi-big-val">3.2×</div><div class="roi-big-label">Return on Investment · 3-Year Horizon</div></div>
+          <div class="roi-metrics-grid">
+            <div class="roi-metric"><div class="roi-mval green">+28%</div><div class="roi-mlabel">Accuracy Gain</div></div>
+            <div class="roi-metric"><div class="roi-mval orange">34%</div><div class="roi-mlabel">Faster Delivery</div></div>
+            <div class="roi-metric"><div class="roi-mval purple">$40M+</div><div class="roi-mlabel">Portfolio Saving</div></div>
+            <div class="roi-metric"><div class="roi-mval">$0</div><div class="roi-mlabel">Infra Cost (serverless)</div></div>
+          </div>
+          <div style="margin-top:12px;background:#111a2e;border:1px solid #1d2b50;border-radius:4px;padding:12px 16px;font-size:13px;color:#c6c6c6;line-height:1.6">
+            <span style="color:#78a9ff;font-weight:700">Governance:</span> Every estimate is built on IBM's own GreenSTAR deal process, HCM productivity standards, and Bid Metrics formulas. The AI enforces IBM's rules — not generic assumptions.<br/><br/>
+            <span style="color:#78a9ff;font-weight:700">Infrastructure:</span> Runs on IBM Cloud Code Engine (serverless, scale-to-zero). Operating cost: near-zero. Payback period: measured in deals, not years.
+          </div>
+        </div>
+      </div>
+      <div class="caption">
+        <span class="cap-scene">Scene 5</span>
+        <span class="cap-text"><strong>Business Impact</strong> — 3.2× ROI · $2.2M saving per deal · 90% faster proposals · 73% win probability · $40M+ portfolio saving. IBM governance embedded. Infrastructure cost: near-zero.</span>
+        <span class="cap-time">2:20 – 2:45</span>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════
+         SCENE 6 — Closing  (2:45 – 3:00)
+    ══════════════════════════════════════════════════════════════ -->
+    <div class="scene" id="s6">
+      <div class="s0-grid" style="background-image:linear-gradient(rgba(15,98,254,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(15,98,254,.04) 1px,transparent 1px);background-size:80px 80px;position:absolute;inset:0"></div>
+      <div class="close-inner">
+        <div class="close-left">
+          <div class="close-eyebrow">IBM Consulting · SolutionIntel · Next Steps</div>
+          <div class="close-h1">Start with<br/><span>One Pilot.</span></div>
+          <div class="close-body">No implementation programme. No steering committee. Take one active RFP, run it through SolutionIntel in parallel — and compare the delta with your own data.</div>
+          <div class="close-steps">
+            <div class="close-step"><div class="cs-num">1</div><div class="cs-body"><strong>Pilot Proposal</strong> — Select one live RFP. AI-assisted analysis delivered within 5 business days.</div></div>
+            <div class="close-step"><div class="cs-num">2</div><div class="cs-body"><strong>Executive Briefing</strong> — 90-minute deep-dive for your technical leadership on architecture &amp; governance.</div></div>
+            <div class="close-step"><div class="cs-num">3</div><div class="cs-body"><strong>Proof of Value</strong> — 30-day formal PoV with agreed success metrics. Payback measured in deals.</div></div>
+          </div>
+        </div>
+        <div class="close-right">
+          <div class="close-stat"><div class="cs-val">1</div><div class="cs-lbl">Pilot. One RFP. One week.</div></div>
+          <div class="close-stat" style="border-color:rgba(25,128,56,.35);background:rgba(25,128,56,.12)"><div class="cs-val" style="color:#42be65">$2.2M</div><div class="cs-lbl" style="color:#42be65">Saving visible in first bid</div></div>
+          <div class="close-stat" style="border-color:rgba(105,41,196,.35);background:rgba(105,41,196,.12)"><div class="cs-val" style="color:#a56eff">Pradeep Lamba</div><div class="cs-lbl" style="color:#a56eff">IBM Consulting · SolutionIntel</div></div>
+        </div>
+      </div>
+      <div class="ibm-watermark">IBM</div>
+      <div class="caption">
+        <span class="cap-scene">Closing</span>
+        <span class="cap-text"><strong>SolutionIntel is live. It is working. It is here.</strong> The only question is: which client engagement do we start with?</span>
+        <span class="cap-time">2:45 – 3:00</span>
+      </div>
+    </div>
+
+  </div><!-- /scenes -->
+</div><!-- /shell -->
+
+<script>
+// ── Viewport scaling ─────────────────────────────────────────────────────────
+// The demo canvas is fixed at 1920×1080. We CSS-scale it to fill whatever
+// window/viewport the user has, letterboxing if the aspect ratio differs.
+const CANVAS_W = 1920, CANVAS_H = 1080;
+const shellEl = document.getElementById('shell');
+
+function applyScale() {
+  const scale = Math.min(
+    window.innerWidth  / CANVAS_W,
+    window.innerHeight / CANVAS_H
+  );
+  shellEl.style.transform = `scale(${scale})`;
+  // Centre the scaled canvas if aspect ratios differ
+  const scaledW = CANVAS_W * scale;
+  const scaledH = CANVAS_H * scale;
+  shellEl.style.left = Math.max(0, (window.innerWidth  - scaledW) / 2) + 'px';
+  shellEl.style.top  = Math.max(0, (window.innerHeight - scaledH) / 2) + 'px';
+}
+applyScale();
+window.addEventListener('resize', applyScale);
+
+// ── Scene timings (seconds from start) ──────────────────────────────────────
+const TOTAL = 180; // 3 minutes exactly
+const SCENES = [
+  { id:'s0', start:0,   end:20  },   // 0:00 Title
+  { id:'s1', start:20,  end:50  },   // 0:20 Platform Portal
+  { id:'s2', start:50,  end:80  },   // 0:50 WinPath Pro Dashboard
+  { id:'s3', start:80,  end:110 },   // 1:20 Account Intelligence
+  { id:'s4', start:110, end:140 },   // 1:50 MCSA Multi-Agent
+  { id:'s5', start:140, end:165 },   // 2:20 ROI Dashboard
+  { id:'s6', start:165, end:180 },   // 2:45 Closing
+];
+
+let elapsed = 0;
+let rafId = null;
+let lastTs = null;
+let playing = true;
+
+const progressEl = document.getElementById('progress-inner');
+const timerEl    = document.getElementById('timer-display');
+
+function setScene(idx) {
+  document.querySelectorAll('.scene').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById(SCENES[idx].id);
+  if (el) el.classList.add('active');
+}
+
+function fmt(sec) {
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return m + ':' + String(s).padStart(2,'0');
+}
+
+function tick(ts) {
+  if (!playing) return;
+  if (lastTs === null) lastTs = ts;
+  const dt = (ts - lastTs) / 1000;
+  lastTs = ts;
+  elapsed = Math.min(elapsed + dt, TOTAL);
+
+  // Update progress bar
+  const pct = (elapsed / TOTAL) * 100;
+  progressEl.style.width = pct + '%';
+
+  // Update countdown timer (counts down from 3:00)
+  const remaining = Math.max(0, TOTAL - elapsed);
+  timerEl.textContent = fmt(remaining);
+
+  // Determine active scene
+  for (let i = SCENES.length - 1; i >= 0; i--) {
+    if (elapsed >= SCENES[i].start) {
+      const current = document.querySelector('.scene.active');
+      const target  = document.getElementById(SCENES[i].id);
+      if (current !== target) setScene(i);
+      break;
+    }
+  }
+
+  if (elapsed < TOTAL) {
+    rafId = requestAnimationFrame(tick);
+  } else {
+    timerEl.textContent = '0:00';
+    // Loop after 2s pause
+    setTimeout(() => {
+      elapsed = 0;
+      lastTs = null;
+      setScene(0);
+      rafId = requestAnimationFrame(tick);
+    }, 2000);
+  }
+}
+
+// ── Keyboard / click controls ────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === ' ') {
+    e.preventDefault();
+    playing = !playing;
+    if (playing) {
+      lastTs = null;
+      rafId = requestAnimationFrame(tick);
+    }
+  }
+  if (e.key === 'ArrowRight') {
+    for (let i = 0; i < SCENES.length - 1; i++) {
+      if (elapsed >= SCENES[i].start && elapsed < SCENES[i].end) {
+        elapsed = SCENES[i+1].start;
+        break;
+      }
+    }
+  }
+  if (e.key === 'ArrowLeft') {
+    for (let i = 1; i < SCENES.length; i++) {
+      if (elapsed >= SCENES[i].start) {
+        elapsed = Math.max(0, SCENES[i-1].start);
+        break;
+      }
+    }
+  }
+  if (e.key === 'r' || e.key === 'R') {
+    elapsed = 0;
+    lastTs = null;
+    playing = true;
+    setScene(0);
+    if (!rafId) rafId = requestAnimationFrame(tick);
+  }
+});
+
+// Click to advance scene
+document.getElementById('shell').addEventListener('click', e => {
+  if (e.target.closest('#topbar')) return;
+  for (let i = 0; i < SCENES.length - 1; i++) {
+    if (elapsed >= SCENES[i].start && elapsed < SCENES[i].end) {
+      elapsed = SCENES[i+1].start;
+      break;
+    }
+  }
+});
+
+// Start
+setScene(0);
+rafId = requestAnimationFrame(tick);
+</script>
+</body>
+</html>

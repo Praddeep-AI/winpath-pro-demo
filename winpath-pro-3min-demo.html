@@ -1,0 +1,1216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>IBM WinPath Pro — 3-Minute Executive Demo</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --b:#0f62fe;--dark:#050505;--surf:#161616;--card:#262626;--card2:#393939;
+  --bdr:#3d3d3d;--txt:#f4f4f4;--mut:#8d8d8d;
+  --grn:#42be65;--grn2:#198038;--pur:#a56eff;--pur2:#6929c4;
+  --cyn:#3ddbd9;--yel:#f1c21b;--red:#fa4d56;--org:#ff832b;
+}
+
+/*
+ * LAYOUT: 1920×1080 logical canvas, CSS-scaled to fill the real viewport.
+ * No outer topbar — progress bar & timer live inside each scene's own chrome.
+ * transform-origin: top left; JS centres via left/top offset.
+ */
+html,body{
+  width:100%;height:100%;
+  margin:0;padding:0;overflow:hidden;
+  background:#000;
+  font-family:'Segoe UI',system-ui,sans-serif;
+}
+
+#shell{
+  position:absolute;
+  top:0;left:0;
+  width:1920px;height:1080px;
+  transform-origin:top left;
+  overflow:hidden;
+  background:#111;
+}
+
+/* ── SCENE LAYER — full 1080px, no outer topbar offset ── */
+#scenes{position:absolute;inset:0;overflow:hidden}
+.scene{
+  position:absolute;top:0;left:0;right:0;bottom:0;
+  opacity:0;pointer-events:none;
+  transition:opacity .5s ease;
+  display:flex;flex-direction:column;overflow:hidden;
+}
+.scene.active{opacity:1;pointer-events:all}
+
+/* ── SHARED PROGRESS BAR (lives inside each scene's topbar) ── */
+#prog-outer{width:320px;height:4px;background:rgba(255,255,255,.12);border-radius:2px;overflow:hidden}
+#prog-inner{height:100%;background:var(--b);width:0%;transition:width .35s linear}
+#timer{font-size:18px;font-weight:700;color:#78a9ff;font-variant-numeric:tabular-nums;min-width:52px;text-align:right}
+
+/* ── CAPTION ── */
+.cap{
+  position:absolute;bottom:0;left:0;right:0;z-index:100;
+  background:rgba(0,0,0,.9);border-top:2px solid var(--b);
+  padding:10px 44px;display:flex;align-items:center;gap:24px;
+}
+.cap-label{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--b);min-width:90px;flex-shrink:0}
+.cap-text{font-size:15px;color:var(--txt);line-height:1.5;flex:1}
+.cap-time{font-size:11px;color:var(--mut);min-width:68px;text-align:right;flex-shrink:0}
+
+/* ── SHARED COMPONENTS ── */
+.card{background:var(--card);border:1px solid var(--bdr);border-radius:3px;padding:13px 15px}
+.ct{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--mut);margin-bottom:7px}
+.cv{font-size:22px;font-weight:800;line-height:1}
+.cs{font-size:10px;color:#525252;margin-top:3px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:10px}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.pill{display:inline-block;padding:2px 8px;border-radius:8px;font-size:9px;font-weight:700}
+.pb{background:#003a6d;color:#78a9ff}
+.pg{background:#044317;color:var(--grn)}
+.pr{background:#520408;color:var(--red)}
+.py{background:#3d2100;color:var(--yel)}
+.pp{background:#2d1f52;color:var(--pur)}
+.pc{background:#003d4a;color:var(--cyn)}
+.row{display:flex;justify-content:space-between;align-items:center;font-size:11px;padding:4px 0;border-bottom:1px solid #2a2a2a}
+.rl{color:var(--mut)}
+.rv{font-weight:700;color:var(--txt)}
+
+/* bar util */
+.br{display:flex;align-items:center;gap:7px;margin-bottom:6px;font-size:11px}
+.bl{width:130px;color:var(--mut);flex-shrink:0}
+.bt{flex:1;height:8px;background:#1e1e1e;border-radius:4px;overflow:hidden}
+.bf{height:100%;border-radius:4px}
+.bp{width:34px;text-align:right;color:var(--mut);font-size:10px}
+
+/* table util */
+.tbl{width:100%;border-collapse:collapse;font-size:11px}
+.tbl th{background:#1a1a1a;padding:7px 11px;text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);border-bottom:1px solid var(--bdr)}
+.tbl td{padding:7px 11px;border-bottom:1px solid #222;color:#c6c6c6}
+
+/* gantt */
+.gr{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.gl{width:100px;color:var(--mut);font-size:11px;flex-shrink:0}
+.gt{flex:1;height:16px;background:#1e1e1e;border-radius:2px;position:relative}
+.gb{height:100%;border-radius:2px;position:absolute;display:flex;align-items:center;padding-left:6px;font-size:9px;font-weight:700;color:#fff;overflow:hidden;white-space:nowrap}
+
+/* animations */
+@keyframes progress-fill{0%{width:0%}100%{width:100%}}
+@keyframes fade-up{0%{opacity:0;transform:translateY(8px)}100%{opacity:1;transform:translateY(0)}}
+@keyframes check-in{0%{transform:scale(0);opacity:0}80%{transform:scale(1.15)}100%{transform:scale(1);opacity:1}}
+@keyframes type1{0%,8%{width:0}48%,88%{width:100%}96%,100%{width:0}}
+@keyframes float-bob{0%,100%{transform:translateY(0) rotate(-1deg)}50%{transform:translateY(-7px) rotate(.5deg)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes scan-line{0%{top:0%}100%{top:100%}}
+@keyframes pulse-ring{0%{box-shadow:0 0 0 0 rgba(15,98,254,.5)}100%{box-shadow:0 0 0 14px rgba(15,98,254,0)}}
+
+/* ════════════════════════════════════════════════════
+   SCENE 0 — TITLE CARD
+════════════════════════════════════════════════════ */
+#s0{background:radial-gradient(ellipse 90% 80% at 55% 45%,#0a1a3a 0%,#050810 100%)}
+.s0-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(15,98,254,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(15,98,254,.05) 1px,transparent 1px);background-size:70px 70px;pointer-events:none}
+/* s0 has its own mini topbar strip for timer */
+.s0-hud{position:absolute;top:0;left:0;right:0;height:44px;background:rgba(0,0,0,.6);border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;padding:0 32px;gap:14px;z-index:10}
+.s0-hud-ibm{font-size:18px;font-weight:800;letter-spacing:.16em;color:#fff;font-style:italic}
+.s0-hud-sep{width:1px;height:14px;background:rgba(255,255,255,.2)}
+.s0-hud-name{font-size:12px;font-weight:600;color:var(--txt)}
+.s0-hud-badge{font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;background:var(--b);color:#fff;padding:2px 9px;border-radius:2px}
+.s0-hud-right{margin-left:auto;display:flex;align-items:center;gap:14px}
+.s0-body{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:44px 80px 90px;text-align:center;position:relative;z-index:1}
+.s0-eye{font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:#4589ff;margin-bottom:20px}
+.s0-logo{display:flex;align-items:baseline;gap:12px;margin-bottom:16px}
+.s0-ibm{font-size:72px;font-weight:800;letter-spacing:.16em;color:#fff;font-style:italic}
+.s0-prod{font-size:72px;font-weight:800;letter-spacing:-.02em;color:var(--b)}
+.s0-tag{font-size:24px;color:#78a9ff;font-weight:300;margin-bottom:52px}
+.s0-kpis{display:flex;gap:70px}
+.s0-kpi{text-align:center}
+.s0-kv{font-size:52px;font-weight:800;color:#fff;line-height:1}
+.s0-kl{font-size:12px;color:#4589ff;text-transform:uppercase;letter-spacing:.08em;margin-top:5px}
+
+/* ════════════════════════════════════════════════════
+   SCENE 1 — WELCOME / SIGN-IN
+════════════════════════════════════════════════════ */
+#s1{background:#111}
+.wp-chrome{height:100%;display:flex;flex-direction:column;overflow:hidden}
+.wp-topbar{
+  height:48px;background:#000;border-bottom:1px solid var(--bdr);
+  display:flex;align-items:center;padding:0 20px;gap:12px;flex-shrink:0;
+}
+.wp-ibm{font-size:20px;font-weight:800;letter-spacing:.14em;color:#fff;font-style:italic}
+.wp-sep{width:1px;height:16px;background:var(--bdr)}
+.wp-pname{font-size:13px;font-weight:600;color:var(--txt)}
+.wp-psub{font-size:10px;color:#4589ff;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+/* progress strip directly under wp-topbar */
+.wp-prog-strip{height:3px;background:var(--card2);flex-shrink:0;overflow:hidden}
+.wp-prog-fill{height:100%;background:var(--b);width:0%;transition:width .35s linear}
+.wp-av{width:32px;height:32px;border-radius:50%;background:var(--b);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.wp-body{display:flex;flex:1;min-height:0;overflow:hidden}
+.wp-sidebar{width:196px;flex-shrink:0;background:#262626;border-right:1px solid var(--bdr);display:flex;flex-direction:column;overflow:hidden}
+.wp-ni{display:flex;align-items:center;gap:9px;padding:10px 13px;font-size:12px;color:#c6c6c6;border-left:3px solid transparent}
+.wp-ni.on{background:var(--card2);color:var(--txt);font-weight:700;border-left-color:var(--b)}
+.wp-main{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.wp-ph{height:44px;background:#262626;border-bottom:1px solid var(--bdr);display:flex;align-items:center;padding:0 20px;flex-shrink:0}
+.wp-ph-t{font-size:14px;font-weight:700;color:var(--txt)}
+.wp-ph-d{font-size:11px;color:var(--mut);margin-left:10px}
+.wp-content{flex:1;min-height:0;padding:20px 24px 80px;overflow:hidden;display:flex;flex-direction:column;gap:12px}
+
+/* sign-in card */
+.signin-wrap{flex:1;display:flex;align-items:center;justify-content:center}
+.signin-card{width:400px;background:#2a2a2a;border:1px solid var(--bdr);border-radius:6px;padding:32px 30px}
+.si-ibm{font-size:26px;font-weight:800;letter-spacing:.16em;color:#fff;font-style:italic;margin-bottom:4px}
+.si-sub{font-size:12px;color:var(--mut);margin-bottom:22px}
+.bob-row{display:flex;align-items:center;gap:14px;background:#333;border:1px solid #4a4a4a;border-radius:4px;padding:13px;margin-bottom:13px}
+.bob-avatar{width:48px;height:48px;border-radius:50%;overflow:hidden;flex-shrink:0;border:2px solid #3b6fd4;animation:float-bob 2.8s ease-in-out infinite}
+.bob-label{font-size:10px;font-weight:700;color:#5b9cf6;letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px}
+.bob-msg{font-size:13px;color:#f0f0f0}
+.bob-type{background:#1e2a3a;border:1px solid #2d4a6e;border-radius:4px;padding:13px;margin-bottom:22px}
+.bob-type .bl2{font-size:9px;font-weight:700;color:#5b9cf6;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px}
+.bob-type .txt{font-size:13px;color:#e8e8e8;overflow:hidden;white-space:nowrap;border-right:2px solid #5b9cf6;width:0;animation:type1 4.5s steps(42,end) infinite}
+.si-btn{width:100%;padding:13px 16px;background:#1a49e0;border-radius:3px;color:#fff;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;cursor:pointer}
+.si-sso{text-align:center;font-size:11px;color:#5b9cf6;margin-bottom:16px}
+.si-footer{font-size:9px;color:#555;line-height:1.6}
+
+/* ════════════════════════════════════════════════════
+   SCENE 2 — DOCUMENT UPLOAD
+════════════════════════════════════════════════════ */
+#s2{background:#111}
+.dropzone{border:2px dashed var(--bdr);border-radius:4px;padding:52px 28px;text-align:center;background:#1e1e1e;transition:border-color .2s}
+.dz-icon{margin:0 auto 14px;width:52px;height:52px;border-radius:50%;background:#0f2354;display:flex;align-items:center;justify-content:center}
+.dz-h{font-size:15px;font-weight:700;color:#c6c6c6;margin-bottom:5px}
+.dz-sub{font-size:11px;color:var(--mut)}
+.dz-btn{margin-top:16px;display:inline-block;padding:9px 24px;background:var(--b);color:#fff;font-size:12px;font-weight:700;border-radius:3px}
+.recent-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #2a2a2a;cursor:pointer}
+.recent-icon{width:28px;height:28px;background:#1e2a3e;border-radius:3px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.recent-name{font-size:12px;color:#78a9ff;flex:1}
+.recent-size{font-size:10px;color:var(--mut)}
+
+/* ════════════════════════════════════════════════════
+   SCENE 3 — UPLOADING / PARSING
+════════════════════════════════════════════════════ */
+#s3{background:#111}
+.upload-card{width:480px;background:var(--card);border:1px solid var(--bdr);border-radius:6px;padding:36px 32px;text-align:center}
+.upload-file-name{font-size:14px;font-weight:700;color:var(--txt);margin-bottom:5px}
+.upload-file-sub{font-size:11px;color:var(--mut);margin-bottom:22px}
+.upload-track{height:7px;background:var(--card2);border-radius:4px;overflow:hidden;margin-bottom:24px}
+.upload-fill{height:100%;background:var(--b);border-radius:4px;animation:progress-fill 2.5s ease-in-out infinite}
+.upload-steps{display:flex;flex-direction:column;gap:10px}
+.upload-step{display:flex;align-items:center;gap:10px;font-size:12px}
+
+/* ════════════════════════════════════════════════════
+   SCENE 4 — ANALYSIS COMPLETE
+════════════════════════════════════════════════════ */
+#s4{background:#111}
+.check-circle{width:60px;height:60px;border-radius:50%;background:#044317;border:2px solid var(--grn);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;animation:check-in .5s ease .3s both}
+.analyzed-grid{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.ag-row{display:flex;justify-content:space-between;font-size:12px;padding:6px 0;border-bottom:1px solid #2a2a2a}
+
+/* ════════════════════════════════════════════════════
+   SCENE 5 — SCOPE
+════════════════════════════════════════════════════ */
+#s5{background:#111}
+
+/* ════════════════════════════════════════════════════
+   SCENE 6 — DASHBOARD
+════════════════════════════════════════════════════ */
+#s6{background:#111}
+
+/* comparison bars */
+.cmp-track{flex:1;height:22px;background:var(--card2);border-radius:3px;overflow:hidden}
+.cmp-fill{height:100%;display:flex;align-items:center;padding-left:10px;font-size:11px;font-weight:700;color:#fff}
+
+/* ════════════════════════════════════════════════════
+   SCENE 7 — PROJECT PLAN
+════════════════════════════════════════════════════ */
+#s7{background:#111}
+
+/* ════════════════════════════════════════════════════
+   SCENE 8 — STAFFING
+════════════════════════════════════════════════════ */
+#s8{background:#111}
+
+/* ════════════════════════════════════════════════════
+   SCENE 9 — COST / ESTIMATION
+════════════════════════════════════════════════════ */
+#s9{background:#111}
+
+/* ════════════════════════════════════════════════════
+   SCENE 10 — AI IMPACT
+════════════════════════════════════════════════════ */
+#s10{background:#111}
+
+/* ════════════════════════════════════════════════════
+   SCENE 11 — PROPOSAL
+════════════════════════════════════════════════════ */
+#s11{background:#111}
+
+/* ════════════════════════════════════════════════════
+   SCENE 12 — SEND / SHARE
+════════════════════════════════════════════════════ */
+#s12{background:#111}
+
+/* ════════════════════════════════════════════════════
+   SCENE 13 — WIN CONFIDENCE
+════════════════════════════════════════════════════ */
+#s13{background:#111}
+
+/* ════════════════════════════════════════════════════
+   SCENE 14 — CLOSING
+════════════════════════════════════════════════════ */
+#s14{background:radial-gradient(ellipse 90% 80% at 50% 45%,#050f2d 0%,#050810 100%)}
+.s14-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(15,98,254,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(15,98,254,.04) 1px,transparent 1px);background-size:70px 70px;pointer-events:none}
+.s14-hud{position:absolute;top:0;left:0;right:0;height:44px;background:rgba(0,0,0,.6);border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;padding:0 32px;gap:14px;z-index:10}
+.s14-body{flex:1;min-height:0;display:flex;gap:80px;align-items:center;justify-content:center;padding:44px 80px 90px;position:relative;z-index:1}
+.s14-left{flex:1;max-width:640px}
+.s14-eye{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#4589ff;margin-bottom:18px}
+.s14-h1{font-size:68px;font-weight:800;letter-spacing:-.03em;color:#fff;line-height:1.05;margin-bottom:22px}
+.s14-h1 span{color:var(--b)}
+.s14-body-txt{font-size:18px;color:#c8d9ff;line-height:1.7;margin-bottom:32px}
+.s14-steps{display:flex;flex-direction:column;gap:12px}
+.s14-step{display:flex;align-items:flex-start;gap:14px;background:rgba(15,98,254,.1);border:1px solid rgba(15,98,254,.28);border-radius:4px;padding:14px 18px}
+.s14-num{width:30px;height:30px;border-radius:50%;background:var(--b);color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.s14-step-txt{font-size:14px;color:var(--txt);line-height:1.55}
+.s14-right{display:flex;flex-direction:column;gap:18px;min-width:290px}
+.s14-stat{background:rgba(15,98,254,.14);border:1px solid rgba(15,98,254,.32);border-radius:6px;padding:22px 26px;text-align:center}
+.s14-sv{font-size:54px;font-weight:800;color:#fff;line-height:1}
+.s14-sl{font-size:12px;color:#78a9ff;text-transform:uppercase;letter-spacing:.08em;margin-top:7px}
+.ibm-wm{position:absolute;bottom:24px;right:44px;font-size:64px;font-weight:800;letter-spacing:.14em;color:rgba(255,255,255,.04);font-style:italic;pointer-events:none}
+</style>
+</head>
+<body>
+
+<!-- ── REAL-VIEWPORT HUD: fixed overlay, independent of scale ── -->
+<div id="hud" style="
+  position:fixed;top:0;left:0;right:0;z-index:9999;
+  height:40px;background:rgba(0,0,0,.88);border-bottom:2px solid #0f62fe;
+  display:flex;align-items:center;padding:0 28px;gap:14px;
+  font-family:'Segoe UI',system-ui,sans-serif;
+">
+  <span style="font-size:19px;font-weight:800;letter-spacing:.16em;color:#fff;font-style:italic">IBM</span>
+  <span style="width:1px;height:16px;background:#3d3d3d;display:inline-block"></span>
+  <span style="font-size:13px;font-weight:700;color:#f4f4f4">WinPath Pro</span>
+  <span style="font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;background:#0f62fe;color:#fff;padding:2px 9px;border-radius:2px">LIVE DEMO</span>
+  <div style="display:flex;align-items:center;gap:7px;background:#262626;border:1px solid #3d3d3d;padding:3px 11px;border-radius:2px;font-size:11px;color:#8d8d8d;margin-left:10px">
+    <span style="width:6px;height:6px;border-radius:50%;background:#42be65;display:inline-block;animation:blink2 2s infinite"></span>
+    <span id="t-status-txt">Intro</span>
+  </div>
+  <div style="margin-left:auto;display:flex;align-items:center;gap:14px">
+    <div id="prog-outer"><div id="prog-inner"></div></div>
+    <div id="timer">3:00</div>
+  </div>
+</div>
+<style>
+@keyframes blink2{0%,100%{opacity:1}50%{opacity:.25}}
+/* push canvas below the fixed HUD */
+#shell{top:40px !important;height:calc(1080px - 40px) !important}
+#scenes{top:0 !important;height:100% !important}
+</style>
+
+<div id="shell">
+
+<!-- ── SCENES ──────────────────────────────────────────── -->
+<div id="scenes">
+
+<!-- ══ SCENE 0: TITLE CARD  0:00–0:13 ══ -->
+<div class="scene active" id="s0">
+  <div class="s0-grid"></div>
+  <div class="s0-body">
+    <div class="s0-eye">IBM Consulting · AI-Powered Bid Intelligence · Pradeep Lamba</div>
+    <div class="s0-logo">
+      <span class="s0-ibm">IBM</span>
+      <span class="s0-prod">WinPath Pro</span>
+    </div>
+    <div class="s0-tag">From RFP to Winning Proposal — Powered by AI</div>
+    <div class="s0-kpis">
+      <div class="s0-kpi"><div class="s0-kv">90%</div><div class="s0-kl">Faster Proposals</div></div>
+      <div class="s0-kpi"><div class="s0-kv" style="color:var(--grn)">$2.2M</div><div class="s0-kl">Saving Per Deal</div></div>
+      <div class="s0-kpi"><div class="s0-kv" style="color:var(--yel)">73%</div><div class="s0-kl">Win Probability</div></div>
+      <div class="s0-kpi"><div class="s0-kv" style="color:var(--pur)">34%</div><div class="s0-kl">AI Cost Saving</div></div>
+    </div>
+  </div>
+  <div class="cap"><span class="cap-label">Intro</span><span class="cap-text"><strong>WinPath Pro</strong> — IBM's AI-powered RFP intelligence platform. Upload any RFP document and receive a fully costed, staffed, winning proposal in minutes.</span><span class="cap-time">0:00 – 0:13</span></div>
+</div>
+
+<!-- ══ SCENE 1: SIGN-IN  0:13–0:26 ══ -->
+<div class="scene" id="s1">
+  <div class="wp-chrome">
+    <div class="wp-topbar">
+      <span class="wp-ibm">IBM</span><div class="wp-sep"></div>
+      <div><div class="wp-pname">WinPath Pro</div><div class="wp-psub">IBM AI Assistant</div></div>
+      <div class="wp-av" style="margin-left:auto">PL</div>
+    </div>
+    <div class="wp-body">
+      <div class="wp-sidebar">
+        <div class="wp-ni on">🔐 Welcome</div>
+        <div class="wp-ni">📄 Document</div><div class="wp-ni">🔍 Scope</div>
+        <div class="wp-ni">📊 Dashboard</div><div class="wp-ni">👥 Staffing</div>
+        <div class="wp-ni">💰 Cost</div><div class="wp-ni">🤖 AI Impact</div>
+        <div class="wp-ni">📝 Proposal</div><div class="wp-ni">📤 Send</div>
+        <div style="margin-top:auto;padding:10px 13px;font-size:10px;color:#444;border-top:1px solid var(--bdr)">WinPath Pro v2 · FutureNow</div>
+      </div>
+      <div class="wp-main">
+        <div class="wp-ph"><div class="wp-ph-t">Welcome</div><div class="wp-ph-d">— IBM w3id sign-in</div></div>
+        <div class="wp-content">
+          <div class="signin-wrap">
+            <div class="signin-card">
+              <div class="si-ibm">IBM</div>
+              <div class="si-sub">WinPath Pro — RFP Intelligence Platform</div>
+              <div class="bob-row">
+                <div class="bob-avatar">
+                  <svg width="48" height="48" viewBox="0 0 120 120" fill="none"><rect width="120" height="120" rx="24" fill="#d6eaff"/><ellipse cx="60" cy="42" rx="34" ry="8" fill="#5b8dee"/><ellipse cx="60" cy="36" rx="27" ry="20" fill="#6c9ef8"/><rect x="34" y="40" width="52" height="5" rx="2.5" fill="#3b6fd4"/><ellipse cx="60" cy="65" rx="24" ry="22" fill="#f0f4ff"/><circle cx="51" cy="62" r="5" fill="#1c1c1c"/><circle cx="69" cy="62" r="5" fill="#1c1c1c"/><circle cx="52.5" cy="60.5" r="1.8" fill="#fff"/><circle cx="70.5" cy="60.5" r="1.8" fill="#fff"/><path d="M50 74 Q60 82 70 74" stroke="#9aabcf" stroke-width="2.5" fill="none"/><rect x="30" y="88" width="60" height="28" rx="10" fill="#f0f4ff" stroke="#c0cce8" stroke-width="1.5"/><text x="60" y="106" text-anchor="middle" font-size="11" fill="#3b6fd4" font-family="monospace" font-weight="800">&lt;/&gt;</text></svg>
+                </div>
+                <div><div class="bob-label">BOB — IBM AI ASSISTANT</div><div class="bob-msg">Welcome to IBM WinPath Pro</div></div>
+              </div>
+              <div class="bob-type">
+                <div class="bl2">BOB — IBM AI ASSISTANT</div>
+                <div class="txt">Let's build your winning proposal together.</div>
+              </div>
+              <div class="si-btn"><span>Sign in with IBM w3id</span><span>→</span></div>
+              <div class="si-sso">Or sign in with SSO / BluePages</div>
+              <div style="height:1px;background:var(--bdr);margin-bottom:12px"></div>
+              <div class="si-footer">IBM Confidential · Internal Use Only · WinPath Pro v2.0</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="cap"><span class="cap-label">Scene 1</span><span class="cap-text"><strong>Secure Sign-In</strong> — WinPath Pro authenticates via IBM w3id. Bob, IBM's AI assistant, is ready from the first click. Access is controlled, audited, and secure.</span><span class="cap-time">0:13 – 0:26</span></div>
+</div>
+
+<!-- ══ SCENE 2: DOCUMENT UPLOAD  0:26–0:39 ══ -->
+<div class="scene" id="s2">
+  <div class="wp-chrome">
+    <div class="wp-topbar"><span class="wp-ibm">IBM</span><div class="wp-sep"></div><div><div class="wp-pname">WinPath Pro</div><div class="wp-psub">RFP Intelligence</div></div><div class="wp-av">PL</div></div>
+    <div class="wp-body">
+      <div class="wp-sidebar">
+        <div class="wp-ni">🔐 Welcome</div><div class="wp-ni on">📄 Document</div>
+        <div class="wp-ni">🔍 Scope</div><div class="wp-ni">📊 Dashboard</div>
+        <div class="wp-ni">👥 Staffing</div><div class="wp-ni">💰 Cost</div>
+        <div class="wp-ni">🤖 AI Impact</div><div class="wp-ni">📝 Proposal</div><div class="wp-ni">📤 Send</div>
+      </div>
+      <div class="wp-main">
+        <div class="wp-ph"><div class="wp-ph-t">Document Upload</div><div class="wp-ph-d">— Upload &amp; analyse your RFP</div></div>
+        <div class="wp-content">
+          <div class="g2">
+            <div class="dropzone">
+              <div class="dz-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4589ff" stroke-width="2"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg></div>
+              <div class="dz-h">Drop RFP / SOW document here</div>
+              <div class="dz-sub">PDF · DOCX · TXT · XLSX — up to 30 MB</div>
+              <div class="dz-btn">Choose File</div>
+            </div>
+            <div>
+              <div class="card" style="margin-bottom:10px">
+                <div class="ct">Supported Formats</div>
+                <div style="font-size:11px;color:#c6c6c6;padding:5px 0;border-bottom:1px solid #2a2a2a">📄 PDF — auto text extraction</div>
+                <div style="font-size:11px;color:#c6c6c6;padding:5px 0;border-bottom:1px solid #2a2a2a">📝 DOCX — full rich text</div>
+                <div style="font-size:11px;color:#c6c6c6;padding:5px 0;border-bottom:1px solid #2a2a2a">📃 TXT — plain text</div>
+                <div style="font-size:11px;color:#c6c6c6;padding:5px 0">📊 XLSX — structured data</div>
+              </div>
+              <div class="card">
+                <div class="ct">Recent Documents</div>
+                <div class="recent-row"><div class="recent-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#78a9ff" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div class="recent-name">Ashghal_EAMS_BRD_v1.docx</div><div class="recent-size">1.4 MB</div></div>
+                <div class="recent-row"><div class="recent-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#78a9ff" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div class="recent-name">Eskom_MAS_SOW_Final.pdf</div><div class="recent-size">2.1 MB</div></div>
+                <div class="recent-row"><div class="recent-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#78a9ff" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div class="recent-name">KPC_Maximo_RFP_2025.docx</div><div class="recent-size">0.9 MB</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="cap"><span class="cap-label">Scene 2</span><span class="cap-text"><strong>Document Upload</strong> — PDF, DOCX, TXT or XLSX. Here we upload the real Ashghal Enterprise Asset Management BRD from Qatar. 1.4 MB. A complete business requirements document.</span><span class="cap-time">0:26 – 0:39</span></div>
+</div>
+
+<!-- ══ SCENE 3: UPLOADING  0:39–0:52 ══ -->
+<div class="scene" id="s3">
+  <div class="wp-chrome">
+    <div class="wp-topbar"><span class="wp-ibm">IBM</span><div class="wp-sep"></div><div><div class="wp-pname">WinPath Pro</div><div class="wp-psub">Parsing Document</div></div><div class="wp-av">PL</div></div>
+    <div class="wp-body">
+      <div class="wp-sidebar">
+        <div class="wp-ni">🔐 Welcome</div><div class="wp-ni on" style="border-left-color:var(--yel);color:var(--yel)">⚙ Uploading…</div>
+        <div class="wp-ni">🔍 Scope</div><div class="wp-ni">📊 Dashboard</div>
+        <div class="wp-ni">👥 Staffing</div><div class="wp-ni">💰 Cost</div>
+        <div class="wp-ni">🤖 AI Impact</div><div class="wp-ni">📝 Proposal</div><div class="wp-ni">📤 Send</div>
+      </div>
+      <div class="wp-main">
+        <div class="wp-ph"><div class="wp-ph-t">Uploading…</div><div class="wp-ph-d">— Parsing document with AI</div></div>
+        <div class="wp-content" style="align-items:center;justify-content:center">
+          <div class="upload-card">
+            <div style="width:52px;height:52px;border-radius:50%;background:#1e2a3e;border:2px solid var(--b);display:flex;align-items:center;justify-content:center;margin:0 auto 14px">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4589ff" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            </div>
+            <div class="upload-file-name">📄 Ashghal_EAMS_BRD_v1.docx</div>
+            <div class="upload-file-sub">1.4 MB · Uploading and parsing…</div>
+            <div class="upload-track"><div class="upload-fill"></div></div>
+            <div class="upload-steps">
+              <div class="upload-step" style="color:var(--grn);animation:fade-up .4s ease .2s both"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 13l4 4L19 7"/></svg> Uploading file…</div>
+              <div class="upload-step" style="color:var(--grn);animation:fade-up .4s ease .6s both"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 13l4 4L19 7"/></svg> Extracting text (14,320 words)…</div>
+              <div class="upload-step" style="color:#78a9ff;animation:fade-up .4s ease 1s both"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 13l4 4L19 7"/></svg> Sanitising content…</div>
+              <div class="upload-step" style="color:#78a9ff;animation:fade-up .4s ease 1.4s both"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 13l4 4L19 7"/></svg> Identifying 12 sections…</div>
+              <div class="upload-step" style="color:var(--yel);animation:fade-up .4s ease 1.8s both"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 13l4 4L19 7"/></svg> Running AI analysis on 9 modules…</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="cap"><span class="cap-label">Scene 3</span><span class="cap-text"><strong>AI Parsing</strong> — Five operations run simultaneously: text extraction, sanitisation, section identification, NLP clause analysis, and population of 9 analysis modules. Under 60 seconds.</span><span class="cap-time">0:39 – 0:52</span></div>
+</div>
+
+<!-- ══ SCENE 4: ANALYSIS COMPLETE  0:52–1:05 ══ -->
+<div class="scene" id="s4">
+  <div class="wp-chrome">
+    <div class="wp-topbar"><span class="wp-ibm">IBM</span><div class="wp-sep"></div><div><div class="wp-pname">WinPath Pro</div><div class="wp-psub">Analysis Complete</div></div><div class="wp-av">PL</div></div>
+    <div class="wp-body">
+      <div class="wp-sidebar">
+        <div class="wp-ni">🔐 Welcome</div><div class="wp-ni">📄 Document</div>
+        <div class="wp-ni on" style="border-left-color:var(--grn);color:var(--grn)">✓ Analyzed</div>
+        <div class="wp-ni">📊 Dashboard</div><div class="wp-ni">👥 Staffing</div>
+        <div class="wp-ni">💰 Cost</div><div class="wp-ni">🤖 AI Impact</div>
+        <div class="wp-ni">📝 Proposal</div><div class="wp-ni">📤 Send</div>
+      </div>
+      <div class="wp-main">
+        <div class="wp-ph"><div class="wp-ph-t">Analysis Complete</div><div class="wp-ph-d">— All modules unlocked</div></div>
+        <div class="wp-content" style="align-items:center;justify-content:center">
+          <div class="card" style="width:500px;padding:32px">
+            <div style="text-align:center;margin-bottom:22px">
+              <div class="check-circle"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--grn)" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div>
+              <div style="font-size:17px;font-weight:800;color:var(--grn)">Analysis Complete!</div>
+              <div style="font-size:11px;color:var(--mut);margin-top:5px">Ashghal_EAMS_BRD_v1.docx · 1.4 MB · Processed in 47s</div>
+            </div>
+            <div class="analyzed-grid">
+              <div>
+                <div class="ag-row"><span class="rl">Words extracted</span><span class="rv">14,320</span></div>
+                <div class="ag-row"><span class="rl">Sections found</span><span class="rv">12</span></div>
+                <div class="ag-row"><span class="rl">Scope items</span><span class="rv">18</span></div>
+                <div class="ag-row"><span class="rl">T&amp;C clauses</span><span class="rv">7</span></div>
+              </div>
+              <div>
+                <div class="ag-row"><span class="rl">Timeline detected</span><span class="rv" style="color:#78a9ff">26 weeks</span></div>
+                <div class="ag-row"><span class="rl">Hypercare</span><span class="rv" style="color:#78a9ff">4 weeks</span></div>
+                <div class="ag-row"><span class="rl">Assumptions</span><span class="rv">9</span></div>
+                <div class="ag-row"><span class="rl">Risk flags</span><span class="rv" style="color:var(--yel)">2</span></div>
+              </div>
+            </div>
+            <div style="margin-top:18px;padding:11px 15px;background:#1e3a5f;border:1px solid #2d5a8e;border-radius:3px;font-size:12px;color:#78a9ff">
+              ✓ All 14 analysis modules populated — 9 tabs now unlocked
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="cap"><span class="cap-label">Scene 4</span><span class="cap-text"><strong>Analysis Complete</strong> — 14,320 words extracted · 12 sections · 18 scope items · 7 T&amp;C clauses · 26-week timeline detected automatically. All 14 modules populated in 47 seconds.</span><span class="cap-time">0:52 – 1:05</span></div>
+</div>
+
+<!-- ══ SCENE 5: SCOPE  1:05–1:18 ══ -->
+<div class="scene" id="s5">
+  <div class="wp-chrome">
+    <div class="wp-topbar"><span class="wp-ibm">IBM</span><div class="wp-sep"></div><div><div class="wp-pname">WinPath Pro</div><div class="wp-psub">Scope Analysis</div></div><div class="wp-av">PL</div></div>
+    <div class="wp-body">
+      <div class="wp-sidebar">
+        <div class="wp-ni">🔐 Welcome</div><div class="wp-ni">📄 Document</div>
+        <div class="wp-ni on">🔍 Scope</div><div class="wp-ni">📊 Dashboard</div>
+        <div class="wp-ni">👥 Staffing</div><div class="wp-ni">💰 Cost</div>
+        <div class="wp-ni">🤖 AI Impact</div><div class="wp-ni">📝 Proposal</div><div class="wp-ni">📤 Send</div>
+      </div>
+      <div class="wp-main">
+        <div class="wp-ph"><div class="wp-ph-t">Scope &amp; Requirements</div><div class="wp-ph-d">— What's in, what's out, what's assumed</div></div>
+        <div class="wp-content">
+          <div class="g3">
+            <div class="card"><div class="ct">In Scope</div><div class="cv" style="color:var(--grn)">18</div><div class="cs">Deliverables confirmed</div></div>
+            <div class="card"><div class="ct">Out of Scope</div><div class="cv" style="color:var(--red)">5</div><div class="cs">Explicitly excluded</div></div>
+            <div class="card"><div class="ct">Assumptions</div><div class="cv" style="color:var(--yel)">9</div><div class="cs">Dependencies flagged</div></div>
+          </div>
+          <div class="g2">
+            <div class="card">
+              <div class="ct" style="color:var(--grn)">✓ In Scope</div>
+              <div style="font-size:11px;color:#c6c6c6;padding:4px 0;border-bottom:1px solid #2a2a2a">✓ MAS 8.11 Implementation</div>
+              <div style="font-size:11px;color:#c6c6c6;padding:4px 0;border-bottom:1px solid #2a2a2a">✓ SAP S/4HANA Integration</div>
+              <div style="font-size:11px;color:#c6c6c6;padding:4px 0;border-bottom:1px solid #2a2a2a">✓ Work Order Management</div>
+              <div style="font-size:11px;color:#c6c6c6;padding:4px 0;border-bottom:1px solid #2a2a2a">✓ Preventive Maintenance</div>
+              <div style="font-size:11px;color:#c6c6c6;padding:4px 0;border-bottom:1px solid #2a2a2a">✓ Mobile Field Tech App</div>
+              <div style="font-size:11px;color:#c6c6c6;padding:4px 0;border-bottom:1px solid #2a2a2a">✓ Asset Hierarchy Migration</div>
+              <div style="font-size:11px;color:#c6c6c6;padding:4px 0;border-bottom:1px solid #2a2a2a">✓ User Training (150 users)</div>
+              <div style="font-size:11px;color:#c6c6c6;padding:4px 0">✓ Go-Live Support 4 weeks</div>
+            </div>
+            <div>
+              <div class="card" style="margin-bottom:10px">
+                <div class="ct" style="color:var(--red)">✕ Out of Scope</div>
+                <div style="font-size:11px;color:#c6c6c6;padding:3px 0;border-bottom:1px solid #2a2a2a">✕ Custom reports beyond 10 templates</div>
+                <div style="font-size:11px;color:#c6c6c6;padding:3px 0;border-bottom:1px solid #2a2a2a">✕ Third-party hardware supply</div>
+                <div style="font-size:11px;color:#c6c6c6;padding:3px 0;border-bottom:1px solid #2a2a2a">✕ Legacy ERP decommission</div>
+                <div style="font-size:11px;color:#c6c6c6;padding:3px 0">✕ Network infrastructure</div>
+              </div>
+              <div class="card">
+                <div class="ct" style="color:var(--yel)">⚠ Key Assumptions</div>
+                <div style="font-size:11px;color:#c6c6c6;padding:3px 0;border-bottom:1px solid #2a2a2a">⚠ Client provides SME access throughout</div>
+                <div style="font-size:11px;color:#c6c6c6;padding:3px 0;border-bottom:1px solid #2a2a2a">⚠ Data quality ≥ 90% before migration</div>
+                <div style="font-size:11px;color:#c6c6c6;padding:3px 0;border-bottom:1px solid #2a2a2a">⚠ IBM Cloud hosting approved</div>
+                <div style="font-size:11px;color:#c6c6c6;padding:3px 0">⚠ No scope change after Phase 2</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="cap"><span class="cap-label">Scene 5</span><span class="cap-text"><strong>Scope Analysis</strong> — AI draws the engagement boundary before your team reads a single page. 18 in-scope deliverables, 5 exclusions, 9 assumptions — all extracted and flagged automatically.</span><span class="cap-time">1:05 – 1:18</span></div>
+</div>
+
+<!-- ══ SCENE 6: DASHBOARD  1:18–1:31 ══ -->
+<div class="scene" id="s6">
+  <div class="wp-chrome">
+    <div class="wp-topbar"><span class="wp-ibm">IBM</span><div class="wp-sep"></div><div><div class="wp-pname">WinPath Pro</div><div class="wp-psub">Executive Dashboard</div></div><div class="wp-av">PL</div></div>
+    <div class="wp-body">
+      <div class="wp-sidebar">
+        <div class="wp-ni">🔐 Welcome</div><div class="wp-ni">📄 Document</div>
+        <div class="wp-ni">🔍 Scope</div><div class="wp-ni on">📊 Dashboard</div>
+        <div class="wp-ni">👥 Staffing</div><div class="wp-ni">💰 Cost</div>
+        <div class="wp-ni">🤖 AI Impact</div><div class="wp-ni">📝 Proposal</div><div class="wp-ni">📤 Send</div>
+      </div>
+      <div class="wp-main">
+        <div class="wp-ph"><div class="wp-ph-t">Executive Dashboard</div><div class="wp-ph-d">— Ashghal EAMS · Qatar · Fixed-Price Engagement</div></div>
+        <div class="wp-content">
+          <div class="g4">
+            <div class="card"><div class="ct">Total Cost</div><div class="cv" style="color:#78a9ff">$4.2M</div><div class="cs">Fixed price · ±8% conf.</div></div>
+            <div class="card"><div class="ct">Timeline</div><div class="cv" style="color:var(--cyn)">26 wks</div><div class="cs">6.5 months delivery</div></div>
+            <div class="card"><div class="ct">Peak Headcount</div><div class="cv" style="color:var(--grn)">24 FTE</div><div class="cs">Month 4 peak staffing</div></div>
+            <div class="card"><div class="ct">AI Cost Saving</div><div class="cv" style="color:var(--pur)">34%</div><div class="cs">vs traditional delivery</div></div>
+          </div>
+          <div class="g2">
+            <div class="card">
+              <div class="ct">AI-Assisted vs Traditional Cost</div>
+              <div style="margin-top:10px;display:flex;flex-direction:column;gap:10px">
+                <div>
+                  <div style="font-size:10px;color:var(--mut);margin-bottom:4px">Traditional Delivery</div>
+                  <div style="display:flex;align-items:center;gap:10px">
+                    <div class="cmp-track"><div class="cmp-fill" style="width:100%;background:#c8371a">$6.4M — 247 consultants</div></div>
+                    <div style="font-size:12px;font-weight:700;color:#c8371a;min-width:52px">$6.4M</div>
+                  </div>
+                </div>
+                <div>
+                  <div style="font-size:10px;color:var(--mut);margin-bottom:4px">AI-Assisted (WinPath Pro)</div>
+                  <div style="display:flex;align-items:center;gap:10px">
+                    <div class="cmp-track"><div class="cmp-fill" style="width:66%;background:var(--b)">$4.2M — 24 FTE</div></div>
+                    <div style="font-size:12px;font-weight:700;color:var(--b);min-width:52px">$4.2M</div>
+                  </div>
+                </div>
+                <div style="background:#042e0b;border:1px solid var(--grn2);border-radius:3px;padding:9px 14px;font-size:13px;color:var(--grn);font-weight:700;text-align:center">
+                  🎯 AI Saving: $2.2M (34.4%) on this single engagement
+                </div>
+              </div>
+            </div>
+            <div>
+              <div class="card" style="margin-bottom:10px">
+                <div class="ct">KPI Summary</div>
+                <div class="row"><span class="rl">Delivery weeks</span><span class="rv">24w</span></div>
+                <div class="row"><span class="rl">Offshore blend</span><span class="rv">65%</span></div>
+                <div class="row"><span class="rl">Blended rate</span><span class="rv">$105/hr</span></div>
+                <div class="row"><span class="rl">Win probability</span><span class="rv" style="color:var(--grn)">73%</span></div>
+              </div>
+              <div class="card">
+                <div class="ct">Phase Cost Distribution</div>
+                <svg viewBox="0 0 240 64" style="width:100%;height:64px">
+                  <g><rect x="2" y="36" width="28" height="28" fill="#0f62fe" rx="2"/><text x="16" y="72" text-anchor="middle" font-size="6" fill="#555">Disc</text></g>
+                  <g><rect x="38" y="22" width="28" height="42" fill="#6929c4" rx="2"/><text x="52" y="72" text-anchor="middle" font-size="6" fill="#555">Dsgn</text></g>
+                  <g><rect x="74" y="0" width="28" height="64" fill="#1192e8" rx="2"/><text x="88" y="72" text-anchor="middle" font-size="6" fill="#555">Build</text></g>
+                  <g><rect x="110" y="14" width="28" height="50" fill="#009d9a" rx="2"/><text x="124" y="72" text-anchor="middle" font-size="6" fill="#555">Int</text></g>
+                  <g><rect x="146" y="20" width="28" height="44" fill="#198038" rx="2"/><text x="160" y="72" text-anchor="middle" font-size="6" fill="#555">Test</text></g>
+                  <g><rect x="182" y="34" width="28" height="30" fill="#b28600" rx="2"/><text x="196" y="72" text-anchor="middle" font-size="6" fill="#555">Dep</text></g>
+                  <g><rect x="218" y="46" width="20" height="18" fill="#8a3ffc" rx="2"/><text x="228" y="72" text-anchor="middle" font-size="6" fill="#555">HC</text></g>
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="cap"><span class="cap-label">Scene 6</span><span class="cap-text"><strong>Executive Dashboard</strong> — Four numbers that matter: $4.2M · 26 weeks · 24 FTE · 34% AI saving. Versus traditional delivery at $6.4M — a $2.2M saving on a single bid.</span><span class="cap-time">1:18 – 1:31</span></div>
+</div>
+
+<!-- ══ SCENE 7: PROJECT PLAN  1:31–1:44 ══ -->
+<div class="scene" id="s7">
+  <div class="wp-chrome">
+    <div class="wp-topbar"><span class="wp-ibm">IBM</span><div class="wp-sep"></div><div><div class="wp-pname">WinPath Pro</div><div class="wp-psub">Project Plan</div></div><div class="wp-av">PL</div></div>
+    <div class="wp-body">
+      <div class="wp-sidebar">
+        <div class="wp-ni">📄 Document</div><div class="wp-ni">🔍 Scope</div>
+        <div class="wp-ni">📊 Dashboard</div><div class="wp-ni on">📅 Project Plan</div>
+        <div class="wp-ni">👥 Staffing</div><div class="wp-ni">💰 Cost</div>
+        <div class="wp-ni">🤖 AI Impact</div><div class="wp-ni">📝 Proposal</div><div class="wp-ni">📤 Send</div>
+      </div>
+      <div class="wp-main">
+        <div class="wp-ph"><div class="wp-ph-t">Project Plan</div><div class="wp-ph-d">— Phases, timeline &amp; milestones</div></div>
+        <div class="wp-content">
+          <div class="g4">
+            <div class="card"><div class="ct">Duration</div><div class="cv" style="color:#78a9ff">24 wks</div><div class="cs">Delivery only</div></div>
+            <div class="card"><div class="ct">Phases</div><div class="cv" style="color:var(--cyn)">7</div><div class="cs">incl. Hypercare</div></div>
+            <div class="card"><div class="ct">Milestones</div><div class="cv" style="color:var(--grn)">12</div><div class="cs">Key checkpoints</div></div>
+            <div class="card"><div class="ct">On Track</div><div class="cv" style="color:var(--yel)">94%</div><div class="cs">of planned tasks</div></div>
+          </div>
+          <div class="card">
+            <div class="ct">Gantt — Phase Timeline (24 weeks)</div>
+            <div style="margin-top:10px">
+              <div class="gr"><div class="gl">Discovery</div><div class="gt"><div class="gb" style="left:0%;width:14%;background:#0f62fe">Discovery</div></div></div>
+              <div class="gr"><div class="gl">Design</div><div class="gt"><div class="gb" style="left:13%;width:9%;background:#6929c4">Design</div></div></div>
+              <div class="gr"><div class="gl">Build</div><div class="gt"><div class="gb" style="left:21%;width:37%;background:#1192e8">Build</div></div></div>
+              <div class="gr"><div class="gl">Integration</div><div class="gt"><div class="gb" style="left:44%;width:20%;background:#009d9a">Integration</div></div></div>
+              <div class="gr"><div class="gl">Testing</div><div class="gt"><div class="gb" style="left:62%;width:16%;background:#198038">Testing</div></div></div>
+              <div class="gr"><div class="gl">Deployment</div><div class="gt"><div class="gb" style="left:76%;width:12%;background:#b28600">Deployment</div></div></div>
+              <div class="gr"><div class="gl">Hypercare</div><div class="gt"><div class="gb" style="left:86%;width:14%;background:#8a3ffc">Hypercare</div></div></div>
+              <div style="display:flex;justify-content:space-between;font-size:9px;color:#444;margin-top:4px;padding-left:108px"><span>W0</span><span>W4</span><span>W8</span><span>W12</span><span>W16</span><span>W20</span><span>W24</span></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="ct">Key Milestones</div>
+            <div style="display:flex;flex-wrap:wrap;gap:7px;margin-top:6px">
+              <span style="padding:4px 11px;background:#2a2a2a;border:1px solid var(--bdr);border-radius:3px;font-size:11px;color:var(--grn)">◆ Kickoff</span>
+              <span style="padding:4px 11px;background:#2a2a2a;border:1px solid var(--bdr);border-radius:3px;font-size:11px;color:var(--grn)">◆ BRD Sign-off</span>
+              <span style="padding:4px 11px;background:#2a2a2a;border:1px solid var(--bdr);border-radius:3px;font-size:11px;color:var(--grn)">◆ Design Freeze</span>
+              <span style="padding:4px 11px;background:#2a2a2a;border:1px solid var(--bdr);border-radius:3px;font-size:11px;color:var(--grn)">◆ Dev Complete</span>
+              <span style="padding:4px 11px;background:#2a2a2a;border:1px solid var(--bdr);border-radius:3px;font-size:11px;color:#78a9ff">◆ SIT Pass</span>
+              <span style="padding:4px 11px;background:#2a2a2a;border:1px solid var(--bdr);border-radius:3px;font-size:11px;color:#78a9ff">◆ UAT Sign-off</span>
+              <span style="padding:4px 11px;background:#2a2a2a;border:1px solid var(--bdr);border-radius:3px;font-size:11px;color:#78a9ff">◆ Go-Live</span>
+              <span style="padding:4px 11px;background:#2a2a2a;border:1px solid var(--bdr);border-radius:3px;font-size:11px;color:#78a9ff">◆ Hypercare End</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="cap"><span class="cap-label">Scene 7</span><span class="cap-text"><strong>Project Plan</strong> — 7 phases · 24 weeks · 12 milestones. The full Gantt is generated automatically from the RFP document timeline. Discovery through Hypercare, all in one view.</span><span class="cap-time">1:31 – 1:44</span></div>
+</div>
+
+<!-- ══ SCENE 8: STAFFING  1:44–1:57 ══ -->
+<div class="scene" id="s8">
+  <div class="wp-chrome">
+    <div class="wp-topbar"><span class="wp-ibm">IBM</span><div class="wp-sep"></div><div><div class="wp-pname">WinPath Pro</div><div class="wp-psub">Staffing Plan</div></div><div class="wp-av">PL</div></div>
+    <div class="wp-body">
+      <div class="wp-sidebar">
+        <div class="wp-ni">📄 Document</div><div class="wp-ni">🔍 Scope</div>
+        <div class="wp-ni">📊 Dashboard</div><div class="wp-ni">📅 Project Plan</div>
+        <div class="wp-ni on">👥 Staffing</div><div class="wp-ni">💰 Cost</div>
+        <div class="wp-ni">🤖 AI Impact</div><div class="wp-ni">📝 Proposal</div><div class="wp-ni">📤 Send</div>
+      </div>
+      <div class="wp-main">
+        <div class="wp-ph"><div class="wp-ph-t">Staffing Plan</div><div class="wp-ph-d">— Team composition &amp; rate allocation</div></div>
+        <div class="wp-content">
+          <div class="g4">
+            <div class="card"><div class="ct">Total FTE</div><div class="cv" style="color:#78a9ff">24</div><div class="cs">Peak staffing</div></div>
+            <div class="card"><div class="ct">Offshore</div><div class="cv" style="color:var(--cyn)">65%</div><div class="cs">CIC India</div></div>
+            <div class="card"><div class="ct">Onshore</div><div class="cv" style="color:var(--grn)">35%</div><div class="cs">US / EU / UAE</div></div>
+            <div class="card"><div class="ct">Total Hours</div><div class="cv" style="color:var(--yel)">9,840h</div><div class="cs">24-week delivery</div></div>
+          </div>
+          <div class="card">
+            <div class="ct">Role Breakdown</div>
+            <table class="tbl" style="margin-top:8px">
+              <thead><tr><th>Role</th><th>Band</th><th>Qty</th><th>Location</th><th>Rate ($/hr)</th><th>Est. Cost</th></tr></thead>
+              <tbody>
+                <tr><td style="color:var(--txt);font-weight:600">Solution Architect</td><td><span class="pill pb">Band 8</span></td><td style="color:#78a9ff;font-weight:700">1</td><td><span class="pill pg">Onshore</span></td><td>$220</td><td>$218,400</td></tr>
+                <tr><td style="color:var(--txt);font-weight:600">MAS Functional Lead</td><td><span class="pill pb">Band 7</span></td><td style="color:#78a9ff;font-weight:700">2</td><td><span class="pill pc">Offshore</span></td><td>$90</td><td>$312,000</td></tr>
+                <tr><td style="color:var(--txt);font-weight:600">Integration Developer</td><td><span class="pill pb">Band 6</span></td><td style="color:#78a9ff;font-weight:700">4</td><td><span class="pill pc">Offshore</span></td><td>$75</td><td>$468,000</td></tr>
+                <tr><td style="color:var(--txt);font-weight:600">QA Engineer</td><td><span class="pill pb">Band 5</span></td><td style="color:#78a9ff;font-weight:700">3</td><td><span class="pill pc">Offshore</span></td><td>$65</td><td>$192,000</td></tr>
+                <tr><td style="color:var(--txt);font-weight:600">Project Manager</td><td><span class="pill pb">Band 8</span></td><td style="color:#78a9ff;font-weight:700">1</td><td><span class="pill pg">Onshore</span></td><td>$195</td><td>$156,000</td></tr>
+                <tr><td style="color:var(--txt);font-weight:600">Data Migration Spec.</td><td><span class="pill pb">Band 6</span></td><td style="color:#78a9ff;font-weight:700">3</td><td><span class="pill pc">Offshore</span></td><td>$80</td><td>$168,000</td></tr>
+                <tr><td style="color:var(--txt);font-weight:600">Change Mgmt Lead</td><td><span class="pill pb">Band 7</span></td><td style="color:#78a9ff;font-weight:700">1</td><td><span class="pill pg">Onshore</span></td><td>$185</td><td>$132,000</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="cap"><span class="cap-label">Scene 8</span><span class="cap-text"><strong>Staffing Plan</strong> — 24 FTE · 65% offshore · 35% onshore. Roles, band levels, locations and hourly rates — all generated from the RFP requirements. A complete staffing plan in seconds.</span><span class="cap-time">1:44 – 1:57</span></div>
+</div>
+
+<!-- ══ SCENE 9: COST  1:57–2:10 ══ -->
+<div class="scene" id="s9">
+  <div class="wp-chrome">
+    <div class="wp-topbar"><span class="wp-ibm">IBM</span><div class="wp-sep"></div><div><div class="wp-pname">WinPath Pro</div><div class="wp-psub">Cost Estimation</div></div><div class="wp-av">PL</div></div>
+    <div class="wp-body">
+      <div class="wp-sidebar">
+        <div class="wp-ni">📄 Document</div><div class="wp-ni">🔍 Scope</div>
+        <div class="wp-ni">📊 Dashboard</div><div class="wp-ni">📅 Project Plan</div>
+        <div class="wp-ni">👥 Staffing</div><div class="wp-ni on">💰 Cost</div>
+        <div class="wp-ni">🤖 AI Impact</div><div class="wp-ni">📝 Proposal</div><div class="wp-ni">📤 Send</div>
+      </div>
+      <div class="wp-main">
+        <div class="wp-ph"><div class="wp-ph-t">Cost &amp; Effort</div><div class="wp-ph-d">— Full cost breakdown by phase</div></div>
+        <div class="wp-content">
+          <div class="g4">
+            <div class="card"><div class="ct">Total Cost</div><div class="cv" style="color:#78a9ff">$4,218,400</div><div class="cs">Fixed price</div></div>
+            <div class="card"><div class="ct">Duration</div><div class="cv" style="color:var(--cyn)">24 wks</div><div class="cs">Delivery only</div></div>
+            <div class="card"><div class="ct">Total Effort</div><div class="cv" style="color:var(--grn)">9,840h</div><div class="cs">All roles combined</div></div>
+            <div class="card"><div class="ct">Blended Rate</div><div class="cv" style="color:var(--yel)">$105/hr</div><div class="cs">Weighted average</div></div>
+          </div>
+          <div class="g2">
+            <div class="card">
+              <div class="ct">Phase Cost Breakdown</div>
+              <div style="margin-top:8px">
+                <div class="br"><div class="bl">Discovery</div><div class="bt"><div class="bf" style="width:9%;background:#0f62fe"></div></div><div class="bp">$186k</div></div>
+                <div class="br"><div class="bl">Design</div><div class="bt"><div class="bf" style="width:19%;background:#6929c4"></div></div><div class="bp">$403k</div></div>
+                <div class="br"><div class="bl">Build</div><div class="bt"><div class="bf" style="width:86%;background:#1192e8"></div></div><div class="bp">$1.82M</div></div>
+                <div class="br"><div class="bl">Integration</div><div class="bt"><div class="bf" style="width:32%;background:#009d9a"></div></div><div class="bp">$680k</div></div>
+                <div class="br"><div class="bl">Testing</div><div class="bt"><div class="bf" style="width:26%;background:#198038"></div></div><div class="bp">$561k</div></div>
+                <div class="br"><div class="bl">Deployment</div><div class="bt"><div class="bf" style="width:15%;background:#b28600"></div></div><div class="bp">$321k</div></div>
+                <div class="br"><div class="bl">Hypercare</div><div class="bt"><div class="bf" style="width:12%;background:#8a3ffc"></div></div><div class="bp">$247k</div></div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="ct">Cost Assumptions</div>
+              <div class="row"><span class="rl">Offshore blend</span><span class="rv">65%</span></div>
+              <div class="row"><span class="rl">Contingency</span><span class="rv">10%</span></div>
+              <div class="row"><span class="rl">IBM Cloud hosting</span><span class="rv">$12k/mo</span></div>
+              <div class="row"><span class="rl">Travel &amp; expenses</span><span class="rv">$85k</span></div>
+              <div class="row"><span class="rl">MAS Licenses</span><span class="rv">$420k</span></div>
+              <div class="row"><span class="rl">FX rate (USD/EUR)</span><span class="rv">1.08</span></div>
+              <div style="margin-top:14px;padding:10px 13px;background:#1e3a5f;border:1px solid #2d5a8e;border-radius:3px;font-size:11px;color:#78a9ff">
+                All figures calibrated against IBM's internal delivery benchmarks and GreenSTAR governance framework.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="cap"><span class="cap-label">Scene 9</span><span class="cap-text"><strong>Cost &amp; Effort</strong> — $4.2M fixed price across 7 phases. Every figure calibrated against IBM's delivery benchmarks and GreenSTAR governance rules. No guesswork — IBM's own standards, applied by AI.</span><span class="cap-time">1:57 – 2:10</span></div>
+</div>
+
+<!-- ══ SCENE 10: AI IMPACT  2:10–2:23 ══ -->
+<div class="scene" id="s10">
+  <div class="wp-chrome">
+    <div class="wp-topbar"><span class="wp-ibm">IBM</span><div class="wp-sep"></div><div><div class="wp-pname">WinPath Pro</div><div class="wp-psub">AI Impact</div></div><div class="wp-av">PL</div></div>
+    <div class="wp-body">
+      <div class="wp-sidebar">
+        <div class="wp-ni">📄 Document</div><div class="wp-ni">🔍 Scope</div>
+        <div class="wp-ni">📊 Dashboard</div><div class="wp-ni">📅 Project Plan</div>
+        <div class="wp-ni">👥 Staffing</div><div class="wp-ni">💰 Cost</div>
+        <div class="wp-ni on">🤖 AI Impact</div><div class="wp-ni">📝 Proposal</div><div class="wp-ni">📤 Send</div>
+      </div>
+      <div class="wp-main">
+        <div class="wp-ph"><div class="wp-ph-t">AI Impact Analysis</div><div class="wp-ph-d">— AI value vs traditional delivery</div></div>
+        <div class="wp-content">
+          <div class="g4">
+            <div class="card"><div class="ct">AI Savings</div><div class="cv" style="color:var(--pur)">$2.18M</div><div class="cs">vs traditional delivery</div></div>
+            <div class="card"><div class="ct">Time Saved</div><div class="cv" style="color:var(--grn)">34%</div><div class="cs">Faster delivery</div></div>
+            <div class="card"><div class="ct">Accuracy</div><div class="cv" style="color:var(--cyn)">+28%</div><div class="cs">Fewer defects</div></div>
+            <div class="card"><div class="ct">3-Year ROI</div><div class="cv" style="color:var(--yel)">3.2×</div><div class="cs">Return on investment</div></div>
+          </div>
+          <div class="g2">
+            <div class="card">
+              <div class="ct">AI Agent Performance</div>
+              <table class="tbl" style="margin-top:8px">
+                <thead><tr><th>Agent</th><th>Phase</th><th>Speed</th><th>Accuracy</th><th>Errors</th></tr></thead>
+                <tbody>
+                  <tr><td style="color:var(--txt);font-weight:600">Doc Analyzer</td><td><span class="pill pb">Discovery</span></td><td style="color:var(--grn);font-weight:700">98</td><td style="color:#78a9ff;font-weight:700">96%</td><td style="color:var(--grn);font-weight:700">2</td></tr>
+                  <tr><td style="color:var(--txt);font-weight:600">Code Generator</td><td><span class="pill pb">Build</span></td><td style="color:var(--grn);font-weight:700">88</td><td style="color:#78a9ff;font-weight:700">91%</td><td style="color:var(--yel);font-weight:700">8</td></tr>
+                  <tr><td style="color:var(--txt);font-weight:600">Test Writer</td><td><span class="pill pb">Testing</span></td><td style="color:var(--grn);font-weight:700">92</td><td style="color:#78a9ff;font-weight:700">94%</td><td style="color:var(--grn);font-weight:700">3</td></tr>
+                  <tr><td style="color:var(--txt);font-weight:600">Data Migrator</td><td><span class="pill pb">Migration</span></td><td style="color:var(--grn);font-weight:700">85</td><td style="color:#78a9ff;font-weight:700">89%</td><td style="color:var(--yel);font-weight:700">6</td></tr>
+                  <tr><td style="color:var(--txt);font-weight:600">Proposal Gen</td><td><span class="pill pb">Proposal</span></td><td style="color:var(--grn);font-weight:700">95</td><td style="color:#78a9ff;font-weight:700">90%</td><td style="color:var(--grn);font-weight:700">1</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div>
+              <div class="card" style="margin-bottom:10px">
+                <div class="ct">Automation Opportunities</div>
+                <div class="br"><div class="bl">Document parsing</div><div class="bt"><div class="bf" style="width:97%;background:#8a3ffc"></div></div><div class="bp">97%</div></div>
+                <div class="br"><div class="bl">Test case gen.</div><div class="bt"><div class="bf" style="width:85%;background:#8a3ffc"></div></div><div class="bp">85%</div></div>
+                <div class="br"><div class="bl">Code scaffolding</div><div class="bt"><div class="bf" style="width:78%;background:#8a3ffc"></div></div><div class="bp">78%</div></div>
+                <div class="br"><div class="bl">Data mapping</div><div class="bt"><div class="bf" style="width:91%;background:#8a3ffc"></div></div><div class="bp">91%</div></div>
+                <div class="br"><div class="bl">Proposal drafting</div><div class="bt"><div class="bf" style="width:82%;background:#8a3ffc"></div></div><div class="bp">82%</div></div>
+              </div>
+              <div class="card">
+                <div class="ct">3-Year ROI Model</div>
+                <svg viewBox="0 0 200 80" style="width:100%;height:80px">
+                  <polyline points="10,70 60,52 110,32 160,16 200,8" fill="none" stroke="var(--grn)" stroke-width="2.5"/>
+                  <polyline points="10,70 60,68 110,65 160,63 200,61" fill="none" stroke="#525252" stroke-width="2" stroke-dasharray="4"/>
+                  <text x="10" y="78" font-size="7" fill="#555">Y0</text><text x="58" y="78" font-size="7" fill="#555">Y1</text><text x="108" y="78" font-size="7" fill="#555">Y2</text><text x="158" y="78" font-size="7" fill="#555">Y3</text>
+                  <text x="138" y="12" font-size="8" fill="var(--grn)" font-weight="700">AI ROI 3.2×</text>
+                  <text x="138" y="58" font-size="8" fill="#555">Traditional</text>
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="cap"><span class="cap-label">Scene 10</span><span class="cap-text"><strong>AI Impact</strong> — $2.18M AI saving · 34% faster delivery · +28% accuracy · 3.2× ROI over 3 years. Five specialised AI agents running in parallel — each measured, each accountable.</span><span class="cap-time">2:10 – 2:23</span></div>
+</div>
+
+<!-- ══ SCENE 11: PROPOSAL  2:23–2:36 ══ -->
+<div class="scene" id="s11">
+  <div class="wp-chrome">
+    <div class="wp-topbar"><span class="wp-ibm">IBM</span><div class="wp-sep"></div><div><div class="wp-pname">WinPath Pro</div><div class="wp-psub">Proposal Generator</div></div><div class="wp-av">PL</div></div>
+    <div class="wp-body">
+      <div class="wp-sidebar">
+        <div class="wp-ni">📄 Document</div><div class="wp-ni">🔍 Scope</div>
+        <div class="wp-ni">📊 Dashboard</div><div class="wp-ni">📅 Project Plan</div>
+        <div class="wp-ni">👥 Staffing</div><div class="wp-ni">💰 Cost</div>
+        <div class="wp-ni">🤖 AI Impact</div><div class="wp-ni on">📝 Proposal</div><div class="wp-ni">📤 Send</div>
+      </div>
+      <div class="wp-main">
+        <div class="wp-ph"><div class="wp-ph-t">Proposal Generator</div><div class="wp-ph-d">— Generate winning proposal document</div></div>
+        <div class="wp-content">
+          <div class="g3">
+            <div class="card"><div class="ct">Proposal Score</div><div class="cv" style="color:var(--grn)">87/100</div><div class="cs">Quality rating</div></div>
+            <div class="card"><div class="ct">Sections</div><div class="cv" style="color:#78a9ff">14/14</div><div class="cs">All populated</div></div>
+            <div class="card"><div class="ct">Win Probability</div><div class="cv" style="color:var(--cyn)">73%</div><div class="cs">vs similar IBM deals</div></div>
+          </div>
+          <div class="g2">
+            <div class="card">
+              <div class="ct">Proposal Sections</div>
+              <div style="display:flex;flex-direction:column;gap:2px;margin-top:6px">
+                <div style="display:flex;align-items:center;gap:7px;font-size:11px;padding:3px 0;border-bottom:1px solid #2a2a2a"><span style="color:var(--grn)">✓</span> Executive Summary</div>
+                <div style="display:flex;align-items:center;gap:7px;font-size:11px;padding:3px 0;border-bottom:1px solid #2a2a2a"><span style="color:var(--grn)">✓</span> Understanding of Requirements</div>
+                <div style="display:flex;align-items:center;gap:7px;font-size:11px;padding:3px 0;border-bottom:1px solid #2a2a2a"><span style="color:var(--grn)">✓</span> Proposed Solution Architecture</div>
+                <div style="display:flex;align-items:center;gap:7px;font-size:11px;padding:3px 0;border-bottom:1px solid #2a2a2a"><span style="color:var(--grn)">✓</span> Delivery Approach &amp; Methodology</div>
+                <div style="display:flex;align-items:center;gap:7px;font-size:11px;padding:3px 0;border-bottom:1px solid #2a2a2a"><span style="color:var(--grn)">✓</span> Project Plan &amp; Gantt</div>
+                <div style="display:flex;align-items:center;gap:7px;font-size:11px;padding:3px 0;border-bottom:1px solid #2a2a2a"><span style="color:var(--grn)">✓</span> Staffing Plan &amp; CVs</div>
+                <div style="display:flex;align-items:center;gap:7px;font-size:11px;padding:3px 0;border-bottom:1px solid #2a2a2a"><span style="color:var(--grn)">✓</span> Cost Breakdown (fixed price)</div>
+                <div style="display:flex;align-items:center;gap:7px;font-size:11px;padding:3px 0;border-bottom:1px solid #2a2a2a"><span style="color:var(--yel)">○</span> Risk Register</div>
+                <div style="display:flex;align-items:center;gap:7px;font-size:11px;padding:3px 0;border-bottom:1px solid #2a2a2a"><span style="color:var(--yel)">○</span> IBM Credentials &amp; References</div>
+                <div style="display:flex;align-items:center;gap:7px;font-size:11px;padding:3px 0"><span style="color:var(--yel)">○</span> Terms &amp; Conditions</div>
+              </div>
+            </div>
+            <div>
+              <div class="card" style="margin-bottom:10px">
+                <div class="ct">Export &amp; Share</div>
+                <div style="display:flex;flex-direction:column;gap:7px;margin-top:6px">
+                  <div style="padding:9px 14px;background:var(--b);border-radius:3px;font-size:12px;font-weight:700;color:#fff;cursor:pointer">📧 Send via Email</div>
+                  <div style="padding:9px 14px;background:#25D366;border-radius:3px;font-size:12px;font-weight:700;color:#fff;cursor:pointer">💬 Share via WhatsApp</div>
+                  <div style="padding:9px 14px;background:var(--card2);border:1px solid var(--bdr);border-radius:3px;font-size:12px;font-weight:700;color:var(--txt);cursor:pointer">📄 Export PDF</div>
+                </div>
+              </div>
+              <div class="card">
+                <div class="ct">Objection Handler</div>
+                <div style="padding:5px 0;border-bottom:1px solid #2a2a2a">
+                  <div style="font-size:11px;font-weight:700;color:#78a9ff">Why IBM?</div>
+                  <div style="font-size:10px;color:var(--mut)">24 MAS implementations in 18 months</div>
+                </div>
+                <div style="padding:5px 0;border-bottom:1px solid #2a2a2a">
+                  <div style="font-size:11px;font-weight:700;color:#78a9ff">Cost too high?</div>
+                  <div style="font-size:10px;color:var(--mut)">34% lower TCO with AI — see ROI tab</div>
+                </div>
+                <div style="padding:5px 0">
+                  <div style="font-size:11px;font-weight:700;color:#78a9ff">Timeline too tight?</div>
+                  <div style="font-size:10px;color:var(--mut)">IBM accelerators cut design by 30%</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="cap"><span class="cap-label">Scene 11</span><span class="cap-text"><strong>Proposal Generator</strong> — Proposal score: 87/100 · 14 sections populated · 73% win probability. Pre-loaded objection handlers. Ready to send before your team finishes their first coffee.</span><span class="cap-time">2:23 – 2:36</span></div>
+</div>
+
+<!-- ══ SCENE 12: SEND / SHARE  2:36–2:47 ══ -->
+<div class="scene" id="s12">
+  <div class="wp-chrome">
+    <div class="wp-topbar"><span class="wp-ibm">IBM</span><div class="wp-sep"></div><div><div class="wp-pname">WinPath Pro</div><div class="wp-psub">Send &amp; Share</div></div><div class="wp-av">PL</div></div>
+    <div class="wp-body">
+      <div class="wp-sidebar">
+        <div class="wp-ni">📝 Proposal</div><div class="wp-ni on">📤 Send</div>
+        <div class="wp-ni">📊 Win Intelligence</div>
+        <div style="margin-top:auto;padding:10px 13px;font-size:10px;color:#444;border-top:1px solid var(--bdr)">WinPath Pro v2 · FutureNow</div>
+      </div>
+      <div class="wp-main">
+        <div class="wp-ph"><div class="wp-ph-t">Send Proposal</div><div class="wp-ph-d">— Email · WhatsApp · PDF export</div></div>
+        <div class="wp-content">
+          <div class="g2">
+            <div class="card">
+              <div style="font-size:13px;font-weight:700;color:var(--txt);margin-bottom:16px">📧 Send via Email</div>
+              <div style="margin-bottom:10px"><div style="font-size:10px;color:var(--mut);margin-bottom:4px">To</div><div style="background:#1e1e1e;border:1px solid var(--bdr);border-radius:3px;padding:8px 11px;font-size:12px;color:var(--txt)">client.procurement@ashghal.qa</div></div>
+              <div style="margin-bottom:10px"><div style="font-size:10px;color:var(--mut);margin-bottom:4px">CC</div><div style="background:#1e1e1e;border:1px solid var(--bdr);border-radius:3px;padding:8px 11px;font-size:12px;color:var(--txt)">pradeep.lamba@ibm.com</div></div>
+              <div style="margin-bottom:10px"><div style="font-size:10px;color:var(--mut);margin-bottom:4px">Subject</div><div style="background:#1e1e1e;border:1px solid var(--bdr);border-radius:3px;padding:8px 11px;font-size:12px;color:var(--txt)">IBM Proposal — Ashghal EAMS Implementation</div></div>
+              <div style="background:#1e1e1e;border:1px solid var(--bdr);border-radius:3px;padding:11px;font-size:11px;color:#c6c6c6;line-height:1.7;margin-bottom:14px">
+                Dear Procurement Team,<br><br>
+                Please find attached IBM's proposal for the Ashghal EAMS implementation.<br><br>
+                <strong style="color:var(--txt)">$4.2M fixed price · 24-week delivery · 34% AI saving · 73% win confidence.</strong>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;background:#2a2a2a;border:1px solid var(--bdr);border-radius:3px;font-size:11px;color:#c6c6c6;margin-bottom:14px">
+                📎 IBM_WinPath_Proposal_Ashghal.pdf <span style="color:var(--mut);margin-left:auto">2.8 MB</span>
+              </div>
+              <div style="padding:10px;background:var(--b);border-radius:3px;color:#fff;font-size:13px;font-weight:700;text-align:center;cursor:pointer">✉ Send Proposal</div>
+              <div style="margin-top:10px;padding:9px 12px;background:#044317;border:1px solid var(--grn2);border-radius:3px;font-size:11px;color:var(--grn)">✓ Email queued · Delivery confirmation in notifications</div>
+            </div>
+            <div class="card">
+              <div style="font-size:13px;font-weight:700;color:var(--txt);margin-bottom:8px">💬 Share via WhatsApp QR</div>
+              <div style="font-size:11px;color:var(--mut);margin-bottom:16px">Scan to open proposal link on any phone — shared from the client meeting room</div>
+              <div style="display:flex;gap:20px;align-items:flex-start">
+                <div style="background:#fff;padding:10px;border-radius:6px;display:inline-block">
+                  <svg width="100" height="100" viewBox="0 0 21 21" shape-rendering="crispEdges">
+                    <rect width="21" height="21" fill="white"/>
+                    <rect x="0" y="0" width="7" height="7" fill="none" stroke="black" stroke-width="1"/><rect x="1" y="1" width="5" height="5" fill="black"/><rect x="2" y="2" width="3" height="3" fill="white"/><rect x="3" y="3" width="1" height="1" fill="black"/>
+                    <rect x="14" y="0" width="7" height="7" fill="none" stroke="black" stroke-width="1"/><rect x="15" y="1" width="5" height="5" fill="black"/><rect x="16" y="2" width="3" height="3" fill="white"/><rect x="17" y="3" width="1" height="1" fill="black"/>
+                    <rect x="0" y="14" width="7" height="7" fill="none" stroke="black" stroke-width="1"/><rect x="1" y="15" width="5" height="5" fill="black"/><rect x="2" y="16" width="3" height="3" fill="white"/><rect x="3" y="17" width="1" height="1" fill="black"/>
+                    <rect x="8" y="0" width="1" height="1" fill="black"/><rect x="10" y="0" width="1" height="1" fill="black"/><rect x="12" y="0" width="1" height="1" fill="black"/>
+                    <rect x="8" y="2" width="1" height="1" fill="black"/><rect x="10" y="2" width="2" height="1" fill="black"/>
+                    <rect x="9" y="4" width="1" height="1" fill="black"/><rect x="11" y="4" width="2" height="1" fill="black"/>
+                    <rect x="0" y="8" width="1" height="1" fill="black"/><rect x="2" y="8" width="3" height="1" fill="black"/><rect x="7" y="8" width="1" height="1" fill="black"/>
+                    <rect x="9" y="8" width="2" height="1" fill="black"/><rect x="12" y="8" width="1" height="1" fill="black"/><rect x="14" y="8" width="2" height="1" fill="black"/>
+                    <rect x="8" y="14" width="1" height="1" fill="black"/><rect x="10" y="14" width="2" height="1" fill="black"/>
+                    <rect x="8" y="16" width="2" height="1" fill="black"/><rect x="12" y="16" width="1" height="1" fill="black"/>
+                    <rect x="8" y="18" width="1" height="1" fill="black"/><rect x="11" y="18" width="2" height="1" fill="black"/>
+                    <rect x="8" y="20" width="2" height="1" fill="black"/><rect x="12" y="20" width="1" height="1" fill="black"/>
+                  </svg>
+                </div>
+                <div style="flex:1">
+                  <div style="background:#1e2d1e;border:1px solid #25D366;border-radius:6px;padding:11px;font-size:11px;color:#c6c6c6;line-height:1.7;margin-bottom:12px">
+                    <div style="color:#25D366;font-weight:700;margin-bottom:5px">IBM WinPath Pro — Proposal</div>
+                    📄 Ashghal EAMS · $4.2M Fixed<br>
+                    📅 24-week delivery<br>
+                    🤖 34% AI Cost Saving<br>
+                    🏆 73% Win Confidence
+                  </div>
+                  <div style="display:flex;gap:7px">
+                    <div style="padding:6px 12px;background:var(--b);border-radius:3px;font-size:11px;font-weight:700;color:#fff">📧 Email</div>
+                    <div style="padding:6px 12px;background:#5059c9;border-radius:3px;font-size:11px;font-weight:700;color:#fff">💼 Teams</div>
+                    <div style="padding:6px 12px;background:var(--card2);border:1px solid var(--bdr);border-radius:3px;font-size:11px;font-weight:700;color:var(--txt)">📋 Copy</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="cap"><span class="cap-label">Scene 12</span><span class="cap-text"><strong>Send &amp; Share</strong> — Email to procurement, WhatsApp QR code, Teams link. IBM consultants have shared proposals via QR code before leaving the client meeting room.</span><span class="cap-time">2:36 – 2:47</span></div>
+</div>
+
+<!-- ══ SCENE 13: WIN CONFIDENCE  2:47–2:53 ══ -->
+<div class="scene" id="s13">
+  <div class="wp-chrome">
+    <div class="wp-topbar"><span class="wp-ibm">IBM</span><div class="wp-sep"></div><div><div class="wp-pname">WinPath Pro</div><div class="wp-psub">Win Intelligence</div></div><div class="wp-av">PL</div></div>
+    <div class="wp-body">
+      <div class="wp-sidebar">
+        <div class="wp-ni">📝 Proposal</div><div class="wp-ni">📤 Send</div>
+        <div class="wp-ni on">📊 Win Intelligence</div>
+        <div style="margin-top:auto;padding:10px 13px;font-size:10px;color:#444;border-top:1px solid var(--bdr)">WinPath Pro v2 · FutureNow</div>
+      </div>
+      <div class="wp-main">
+        <div class="wp-ph"><div class="wp-ph-t">Win Intelligence</div><div class="wp-ph-d">— Historical deal analysis &amp; confidence scoring</div></div>
+        <div class="wp-content">
+          <div class="g4">
+            <div class="card"><div class="ct">Confidence</div><div class="cv" style="color:var(--grn)">87%</div><div class="cs">Historical match</div></div>
+            <div class="card"><div class="ct">Similar Deals</div><div class="cv" style="color:#78a9ff">14</div><div class="cs">Last 24 months</div></div>
+            <div class="card"><div class="ct">Win Rate</div><div class="cv" style="color:var(--cyn)">73%</div><div class="cs">Matched engagements</div></div>
+            <div class="card"><div class="ct">Risk Level</div><div class="cv" style="color:var(--yel)">Medium</div><div class="cs">2 flags identified</div></div>
+          </div>
+          <div class="g2">
+            <div class="card">
+              <div class="ct">Historical Engagement Similarity</div>
+              <div style="margin-top:8px">
+                <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #2a2a2a">
+                  <div style="flex:1;font-size:11px;color:#c6c6c6">Ashghal EAM Impl.</div>
+                  <div class="bt" style="width:80px"><div class="bf" style="width:92%;background:var(--grn)"></div></div>
+                  <span style="font-size:10px;color:var(--mut);width:28px">92%</span>
+                  <span class="pill pg">WON</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #2a2a2a">
+                  <div style="flex:1;font-size:11px;color:#c6c6c6">KPC MAS Rollout</div>
+                  <div class="bt" style="width:80px"><div class="bf" style="width:88%;background:var(--grn)"></div></div>
+                  <span style="font-size:10px;color:var(--mut);width:28px">88%</span>
+                  <span class="pill pg">WON</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #2a2a2a">
+                  <div style="flex:1;font-size:11px;color:#c6c6c6">SATORP EAM</div>
+                  <div class="bt" style="width:80px"><div class="bf" style="width:84%;background:var(--grn)"></div></div>
+                  <span style="font-size:10px;color:var(--mut);width:28px">84%</span>
+                  <span class="pill pg">WON</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #2a2a2a">
+                  <div style="flex:1;font-size:11px;color:#c6c6c6">ADNOC Maximo</div>
+                  <div class="bt" style="width:80px"><div class="bf" style="width:79%;background:var(--red)"></div></div>
+                  <span style="font-size:10px;color:var(--mut);width:28px">79%</span>
+                  <span class="pill pr">LOST</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;padding:5px 0">
+                  <div style="flex:1;font-size:11px;color:#c6c6c6">SABIC SAP PM</div>
+                  <div class="bt" style="width:80px"><div class="bf" style="width:71%;background:var(--grn)"></div></div>
+                  <span style="font-size:10px;color:var(--mut);width:28px">71%</span>
+                  <span class="pill pg">WON</span>
+                </div>
+              </div>
+            </div>
+            <div>
+              <div class="card" style="margin-bottom:10px">
+                <div class="ct">Confidence Gauge</div>
+                <svg viewBox="0 0 180 100" style="width:100%;height:100px">
+                  <path d="M20 90 A70 70 0 0 1 160 90" fill="none" stroke="#1e1e1e" stroke-width="14" stroke-linecap="round"/>
+                  <path d="M20 90 A70 70 0 0 1 160 90" fill="none" stroke="var(--grn)" stroke-width="14" stroke-linecap="round" stroke-dasharray="220" stroke-dashoffset="28"/>
+                  <text x="90" y="80" text-anchor="middle" font-size="28" font-weight="800" fill="var(--grn)" font-family="system-ui">87%</text>
+                  <text x="90" y="96" text-anchor="middle" font-size="9" fill="var(--mut)" font-family="system-ui">WIN CONFIDENCE</text>
+                </svg>
+              </div>
+              <div class="card">
+                <div class="ct">Risk Flags</div>
+                <div style="display:flex;gap:8px;padding:6px 0;border-bottom:1px solid #2a2a2a">
+                  <span style="color:var(--yel)">⚑</span>
+                  <div><div style="font-size:11px;font-weight:700;color:var(--yel)">SLA penalty clauses</div><div style="font-size:10px;color:var(--mut)">Review liquidated damages terms</div></div>
+                </div>
+                <div style="display:flex;gap:8px;padding:6px 0">
+                  <span style="color:var(--red)">⚑</span>
+                  <div><div style="font-size:11px;font-weight:700;color:var(--red)">Scope ambiguity</div><div style="font-size:10px;color:var(--mut)">2 requirements need clarification</div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="cap"><span class="cap-label">Scene 13</span><span class="cap-text"><strong>Win Intelligence</strong> — 87% confidence · 73% win rate against 14 similar IBM deals · risk flags surfaced before submission. Historical data working for you at every bid.</span><span class="cap-time">2:47 – 2:53</span></div>
+</div>
+
+<!-- ══ SCENE 14: CLOSING  2:53–3:00 ══ -->
+<div class="scene" id="s14">
+  <div class="s14-grid"></div>
+  <div class="s14-body">
+    <div class="s14-left">
+      <div class="s14-eye">IBM Consulting · WinPath Pro · Next Steps</div>
+      <div class="s14-h1">One RFP.<br/><span>One Pilot.</span></div>
+      <div class="s14-body-txt">Upload a live RFP. Let WinPath Pro run in parallel with your team. Compare quality, time, and cost — with your own document, your own numbers.</div>
+      <div class="s14-steps">
+        <div class="s14-step"><div class="s14-num">1</div><div class="s14-step-txt"><strong>Upload your active RFP</strong> — WinPath Pro returns a full analysis in under 60 seconds.</div></div>
+        <div class="s14-step"><div class="s14-num">2</div><div class="s14-step-txt"><strong>Review AI proposal</strong> — Compare against your manual draft. Measure the delta.</div></div>
+        <div class="s14-step"><div class="s14-num">3</div><div class="s14-step-txt"><strong>Send to client</strong> — Email or WhatsApp QR. From browser to client inbox in one click.</div></div>
+      </div>
+    </div>
+    <div class="s14-right">
+      <div class="s14-stat"><div class="s14-sv">&lt;60s</div><div class="s14-sl">Full RFP analysis</div></div>
+      <div class="s14-stat" style="border-color:rgba(66,190,101,.35);background:rgba(66,190,101,.1)"><div class="s14-sv" style="color:var(--grn)">$2.2M</div><div class="s14-sl" style="color:var(--grn)">Saving on first bid</div></div>
+      <div class="s14-stat" style="border-color:rgba(165,110,255,.35);background:rgba(165,110,255,.1)"><div class="s14-sv" style="color:var(--pur);font-size:30px;padding-top:10px">Pradeep Lamba</div><div class="s14-sl" style="color:var(--pur)">IBM Consulting · WinPath Pro</div></div>
+    </div>
+  </div>
+  <div class="ibm-wm">IBM</div>
+  <div class="cap"><span class="cap-label">Closing</span><span class="cap-text"><strong>WinPath Pro is live. It is here. It is working.</strong> The only question is: which RFP do we start with?</span><span class="cap-time">2:53 – 3:00</span></div>
+</div>
+
+</div><!-- /scenes -->
+</div><!-- /shell -->
+
+<script>
+// ── Viewport scaling ───────────────────────────────────────────────────────
+// The HUD is 40px fixed at real-viewport pixels.
+// The canvas (1920 × 1040) fills the remaining real-viewport space below it.
+const CANVAS_W = 1920;
+const CANVAS_H = 1040;   // 1080 − 40px HUD
+const HUD_H    = 40;
+const shellEl  = document.getElementById('shell');
+
+function applyScale() {
+  const availW = window.innerWidth;
+  const availH = window.innerHeight - HUD_H;
+  // Scale to fill width fully; height may letterbox but never overflow
+  const scale  = Math.min(availW / CANVAS_W, availH / CANVAS_H);
+  const scaledW = CANVAS_W * scale;
+  const scaledH = CANVAS_H * scale;
+  shellEl.style.transform     = `scale(${scale})`;
+  shellEl.style.transformOrigin = 'top left';
+  shellEl.style.left = Math.max(0, (availW  - scaledW) / 2) + 'px';
+  shellEl.style.top  = HUD_H + Math.max(0, (availH - scaledH) / 2) + 'px';
+}
+applyScale();
+window.addEventListener('resize', applyScale);
+
+// ── Scene timing map  (seconds from 0:00) ─────────────────────────────────
+const TOTAL = 180;
+const SCENES = [
+  {id:'s0',  start:0,   end:13},   // 0:00 Title
+  {id:'s1',  start:13,  end:26},   // 0:13 Sign-in
+  {id:'s2',  start:26,  end:39},   // 0:26 Upload
+  {id:'s3',  start:39,  end:52},   // 0:39 Uploading
+  {id:'s4',  start:52,  end:65},   // 0:52 Analyzed
+  {id:'s5',  start:65,  end:78},   // 1:05 Scope
+  {id:'s6',  start:78,  end:91},   // 1:18 Dashboard
+  {id:'s7',  start:91,  end:104},  // 1:31 Project Plan
+  {id:'s8',  start:104, end:117},  // 1:44 Staffing
+  {id:'s9',  start:117, end:130},  // 1:57 Cost
+  {id:'s10', start:130, end:143},  // 2:10 AI Impact
+  {id:'s11', start:143, end:156},  // 2:23 Proposal
+  {id:'s12', start:156, end:167},  // 2:36 Send
+  {id:'s13', start:167, end:173},  // 2:47 Confidence
+  {id:'s14', start:173, end:180},  // 2:53 Closing
+];
+
+let elapsed = 0, lastTs = null, playing = true, rafId = null;
+const progEl  = document.getElementById('prog-inner');
+const timerEl = document.getElementById('timer');
+const statusEl= document.getElementById('t-status-txt');
+
+const STATUS_MAP = {
+  s0:'Intro',s1:'Sign-In',s2:'Upload',s3:'Parsing…',s4:'Analysis Complete',
+  s5:'Scope',s6:'Dashboard',s7:'Project Plan',s8:'Staffing',s9:'Cost',
+  s10:'AI Impact',s11:'Proposal',s12:'Send',s13:'Win Intelligence',s14:'Closing'
+};
+
+function fmt(sec){
+  const m=Math.floor(sec/60),s=Math.floor(sec%60);
+  return m+':'+String(s).padStart(2,'0');
+}
+function setScene(idx){
+  document.querySelectorAll('.scene').forEach(s=>s.classList.remove('active'));
+  const el=document.getElementById(SCENES[idx].id);
+  if(el){el.classList.add('active');}
+  statusEl.textContent = STATUS_MAP[SCENES[idx].id] || '';
+}
+function tick(ts){
+  if(!playing)return;
+  if(lastTs===null)lastTs=ts;
+  const dt=(ts-lastTs)/1000;
+  lastTs=ts;
+  elapsed=Math.min(elapsed+dt,TOTAL);
+  progEl.style.width=(elapsed/TOTAL*100)+'%';
+  timerEl.textContent=fmt(Math.max(0,TOTAL-elapsed));
+  for(let i=SCENES.length-1;i>=0;i--){
+    if(elapsed>=SCENES[i].start){
+      const cur=document.querySelector('.scene.active');
+      const tgt=document.getElementById(SCENES[i].id);
+      if(cur!==tgt)setScene(i);
+      break;
+    }
+  }
+  if(elapsed<TOTAL){rafId=requestAnimationFrame(tick);}
+  else{
+    timerEl.textContent='0:00';
+    setTimeout(()=>{elapsed=0;lastTs=null;setScene(0);rafId=requestAnimationFrame(tick);},2500);
+  }
+}
+
+// ── Controls ───────────────────────────────────────────────────────────────
+document.addEventListener('keydown',e=>{
+  if(e.key===' '){e.preventDefault();playing=!playing;if(playing){lastTs=null;rafId=requestAnimationFrame(tick);}}
+  if(e.key==='ArrowRight'){
+    for(let i=0;i<SCENES.length-1;i++){
+      if(elapsed>=SCENES[i].start&&elapsed<SCENES[i].end){elapsed=SCENES[i+1].start;break;}
+    }
+  }
+  if(e.key==='ArrowLeft'){
+    for(let i=1;i<SCENES.length;i++){
+      if(elapsed>=SCENES[i].start){elapsed=Math.max(0,SCENES[i-1].start);break;}
+    }
+  }
+  if(e.key==='r'||e.key==='R'){elapsed=0;lastTs=null;playing=true;setScene(0);if(!rafId)rafId=requestAnimationFrame(tick);}
+});
+function advanceScene(){
+  for(let i=0;i<SCENES.length-1;i++){
+    if(elapsed>=SCENES[i].start&&elapsed<SCENES[i].end){elapsed=SCENES[i+1].start;break;}
+  }
+}
+shellEl.addEventListener('click', advanceScene);
+document.getElementById('hud').addEventListener('click', advanceScene);
+
+// ── Start ──────────────────────────────────────────────────────────────────
+setScene(0);
+rafId=requestAnimationFrame(tick);
+</script>
+</body>
+</html>
