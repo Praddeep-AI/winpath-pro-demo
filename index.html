@@ -64,9 +64,11 @@ html,body{
 .ct{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--mut);margin-bottom:7px}
 .cv{font-size:22px;font-weight:800;line-height:1}
 .cs{font-size:10px;color:#525252;margin-top:3px}
-.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:10px}
-.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px}
-.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:10px;flex-shrink:0}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px;flex-shrink:0}
+/* g2 stretches to fill remaining vertical space so content fills full screen */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px;flex:1;min-height:0}
+.g2>.card,.g2>div{display:flex;flex-direction:column;overflow:hidden}
 .pill{display:inline-block;padding:2px 8px;border-radius:8px;font-size:9px;font-weight:700}
 .pb{background:#003a6d;color:#78a9ff}
 .pg{background:#044317;color:var(--grn)}
@@ -287,7 +289,7 @@ html,body{
   display:flex;align-items:center;padding:0 28px;gap:14px;
   font-family:'Segoe UI',system-ui,sans-serif;
 ">
-  <span style="display:inline-flex;align-items:center"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 102 40" height="22" fill="#1F70C1"><rect x="0" y="0" width="14" height="5"/><rect x="0" y="7" width="14" height="5"/><rect x="0" y="14" width="14" height="5"/><rect x="0" y="21" width="14" height="5"/><rect x="0" y="28" width="14" height="5"/><rect x="0" y="35" width="14" height="5"/><rect x="18" y="0" width="24" height="5"/><rect x="18" y="7" width="24" height="5"/><rect x="18" y="14" width="28" height="5"/><rect x="18" y="21" width="28" height="5"/><rect x="18" y="28" width="24" height="5"/><rect x="18" y="35" width="24" height="5"/><rect x="18" y="10" width="5" height="17"/><rect x="37" y="10" width="5" height="17"/><rect x="55" y="0" width="6" height="5"/><rect x="67" y="0" width="6" height="5"/><rect x="79" y="0" width="6" height="5"/><rect x="55" y="0" width="32" height="5"/><rect x="55" y="7" width="6" height="5"/><rect x="67" y="7" width="6" height="5"/><rect x="79" y="7" width="6" height="5"/><rect x="55" y="14" width="6" height="5"/><rect x="67" y="14" width="17" height="5"/><rect x="55" y="21" width="6" height="5"/><rect x="67" y="21" width="17" height="5"/><rect x="55" y="28" width="6" height="5"/><rect x="67" y="28" width="6" height="5"/><rect x="79" y="28" width="6" height="5"/><rect x="55" y="35" width="32" height="5"/><rect x="55" y="35" width="6" height="5"/><rect x="67" y="35" width="6" height="5"/><rect x="79" y="35" width="6" height="5"/></svg></span>
+  <span style="display:inline-flex;align-items:center"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 102 40" height="22" fill="#1F70C1"><rect x="0" y="0" width="14" height="5"/><rect x="0" y="7" width="14" height="5"/><rect x="0" y="14" width="14" height="5"/><rect x="0" y="21" width="14" height="5"/><rect x="0" y="28" width="14" height="5"/><rect x="0" y="35" width="14" height="5"/><rect x="18" y="0" width="24" height="5"/><rect x="18" y="7" width="24" height="5"/><rect x="18" y="14" width="28" height="5"/><rect x="18" y="21" width="28" height="5"/><rect x="18" y="28" width="24" height="5"/><rect x="18" y="35" width="24" height="5"/><rect x="18" y="10" width="5" height="17"/><rect x="37" y="10" width="5" height="17"/><rect x="55" y="0" width="32" height="5"/><rect x="55" y="7" width="6" height="5"/><rect x="67" y="7" width="6" height="5"/><rect x="79" y="7" width="6" height="5"/><rect x="55" y="14" width="6" height="5"/><rect x="67" y="14" width="17" height="5"/><rect x="55" y="21" width="6" height="5"/><rect x="67" y="21" width="17" height="5"/><rect x="55" y="28" width="6" height="5"/><rect x="67" y="28" width="6" height="5"/><rect x="79" y="28" width="6" height="5"/><rect x="55" y="35" width="32" height="5"/></svg></span>
   <span style="width:1px;height:16px;background:#3d3d3d;display:inline-block"></span>
   <span style="font-size:13px;font-weight:700;color:#f4f4f4">WinPath Pro</span>
   <span style="font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;background:#0f62fe;color:#fff;padding:2px 9px;border-radius:2px">LIVE DEMO</span>
