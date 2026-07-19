@@ -1109,14 +1109,13 @@ const shellEl  = document.getElementById('shell');
 function applyScale() {
   const availW = window.innerWidth;
   const availH = window.innerHeight - HUD_H;
-  // Scale to fill width fully; height may letterbox but never overflow
-  const scale  = Math.min(availW / CANVAS_W, availH / CANVAS_H);
-  const scaledW = CANVAS_W * scale;
-  const scaledH = CANVAS_H * scale;
-  shellEl.style.transform     = `scale(${scale})`;
+  // Stretch to fill full available space — no letterboxing
+  const sx = availW / CANVAS_W;
+  const sy = availH / CANVAS_H;
+  shellEl.style.transform       = `scale(${sx}, ${sy})`;
   shellEl.style.transformOrigin = 'top left';
-  shellEl.style.left = Math.max(0, (availW  - scaledW) / 2) + 'px';
-  shellEl.style.top  = HUD_H + Math.max(0, (availH - scaledH) / 2) + 'px';
+  shellEl.style.left = '0px';
+  shellEl.style.top  = HUD_H + 'px';
 }
 applyScale();
 window.addEventListener('resize', applyScale);
