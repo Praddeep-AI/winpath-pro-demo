@@ -41,13 +41,12 @@ html,body{
   font-family:'Segoe UI',system-ui,sans-serif;
 }
 
-/* ── SHELL — fixed 1920×1080 canvas, scaled to fit viewport ── */
+/* ── SHELL — fixed 1920×1080 canvas, stretched to fill full viewport ── */
 #shell{
   position:absolute;
   top:0;left:0;
   width:1920px;height:1080px;
   transform-origin:top left;
-  transform:scale(var(--scale));
   overflow:hidden;
   background:#0a0a0a;
 }
@@ -787,22 +786,17 @@ html,body{
 
 <script>
 // ── Viewport scaling ─────────────────────────────────────────────────────────
-// The demo canvas is fixed at 1920×1080. We CSS-scale it to fill whatever
-// window/viewport the user has, letterboxing if the aspect ratio differs.
+// The demo canvas is fixed at 1920×1080. We use independent scaleX/scaleY
+// so it always fills the FULL viewport with no black bars or empty space.
 const CANVAS_W = 1920, CANVAS_H = 1080;
 const shellEl = document.getElementById('shell');
 
 function applyScale() {
-  const scale = Math.min(
-    window.innerWidth  / CANVAS_W,
-    window.innerHeight / CANVAS_H
-  );
-  shellEl.style.transform = `scale(${scale})`;
-  // Centre the scaled canvas if aspect ratios differ
-  const scaledW = CANVAS_W * scale;
-  const scaledH = CANVAS_H * scale;
-  shellEl.style.left = Math.max(0, (window.innerWidth  - scaledW) / 2) + 'px';
-  shellEl.style.top  = Math.max(0, (window.innerHeight - scaledH) / 2) + 'px';
+  const sx = window.innerWidth  / CANVAS_W;
+  const sy = window.innerHeight / CANVAS_H;
+  shellEl.style.transform = `scale(${sx}, ${sy})`;
+  shellEl.style.left = '0px';
+  shellEl.style.top  = '0px';
 }
 applyScale();
 window.addEventListener('resize', applyScale);
